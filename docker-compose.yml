@@ -8,7 +8,8 @@ services:
         # ホスト:コンテナ のポートマッピング
         # ブラウザから localhost:8000 でアクセスできる
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_MD: ${DATABASE_URL_MD}
+      DATABASE_URL_FOUR: ${DATABASE_URL_FOUR}
     depends_on:
       db:
         condition: service_healthy # db の healthcheck が通過してから api を起動する
@@ -26,10 +27,13 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER} # DBユーザー名
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # DBパスワード
-      POSTGRES_DB: ${POSTGRES_DB} # 初期作成するDB名
+      # POSTGRES_DB は指定しない（docker/init.sql で rb2db_md / rb2db_four を作成）
     ports:
       - "5432:5432" # ホストから直接 psql で接続したい場合に使う
     volumes:
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+        # 初回起動時に rb2db_md / rb2db_four を自動作成する
+        # ※ボリュームが既に存在する場合はinitは実行されない（docker compose down -v で再実行）
       - postgres_data:/var/lib/postgresql/data
         # 名前付きボリュームでデータを永続化
         # コンテナを削除してもデータは残る

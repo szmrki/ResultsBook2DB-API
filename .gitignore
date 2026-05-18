@@ -8,6 +8,7 @@ __pycache__
 *.sqlite
 *.dump
 *.sql
+!docker/init.sql
 *.log
 logs/
 memo/
