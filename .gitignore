@@ -1,0 +1,10 @@
+.env
+.env.local
+.env.production
+__pycache__
+*.py[cod]
+.venv/
+*.db
+*.sqlite
+*.dump
+*.sql
