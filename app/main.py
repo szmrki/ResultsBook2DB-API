@@ -26,7 +26,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 # ─── FastAPI アプリ初期化 ──────────────────────────────────────────────────────
 app = FastAPI(
-    title="rb2db-api",
+    title="ResultsBook2DB-API",
     version="1.0.0",
     description="カーリング実試合データ API",
 )

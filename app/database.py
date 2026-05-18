@@ -21,7 +21,10 @@ SessionMd = sessionmaker(autocommit=False, autoflush=False, bind=engine_md)
 SessionFour = sessionmaker(autocommit=False, autoflush=False, bind=engine_four)
 
 # ORMモデルの基底クラス（models.py で使用）
+# __allow_unmapped__ = True: relationship() に古い型アノテーション（list["Game"] など）を
+# 使っても SQLAlchemy 2.0 がエラーにしないよう許可する設定
 Base = declarative_base()
+Base.__allow_unmapped__ = True
 
 
 def get_md_db() -> Generator[Session, None, None]:
