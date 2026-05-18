@@ -8,3 +8,6 @@ __pycache__
 *.sqlite
 *.dump
 *.sql
+*.log
+logs/
+memo/
