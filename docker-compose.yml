@@ -1,0 +1,46 @@
+services:
+  # ── FastAPI アプリケーション ──────────────────────────────────
+  api:
+    build: . # このディレクトリの Dockerfile を使ってイメージをビルド
+    container_name: rb2db-api # コンテナの名前（docker ps で表示される）
+    ports:
+      - "8000:8000"
+        # ホスト:コンテナ のポートマッピング
+        # ブラウザから localhost:8000 でアクセスできる
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy # db の healthcheck が通過してから api を起動する
+    volumes:
+      - ./app:/app/app
+        # ホストの ./app をコンテナの /app/app にマウント
+        # コードを変更すると即座にコンテナに反映される（開発時のみ）
+    command: >
+      uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload     # コード変更を自動検知して再起動（開発時のみ）
+
+  # ── PostgreSQL ────────────────────────────────────────────────
+  db:
+    image: postgres:16 # DockerHub の公式 PostgreSQL 16 イメージを使用
+    container_name: rb2db-pg
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER} # DBユーザー名
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # DBパスワード
+      POSTGRES_DB: ${POSTGRES_DB} # 初期作成するDB名
+    ports:
+      - "5432:5432" # ホストから直接 psql で接続したい場合に使う
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+        # 名前付きボリュームでデータを永続化
+        # コンテナを削除してもデータは残る
+    healthcheck:
+      # コンテナが「起動中」ではなく「接続可能」かを確認する
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 5s # 5秒ごとにチェック
+      timeout: 5s # タイムアウトは5秒
+      retries: 5 # 5回失敗したら異常とみなす
+
+volumes:
+  postgres_data:
+    # 名前付きボリュームの定義
+    # docker compose down -v で削除できる
