@@ -35,6 +35,7 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
         sort: ShotSortField = ShotSortField.id,
         order: OrderDirection = OrderDirection.asc,
         end_id: int | None = None,
+        number: int | None = None,
         player_name: str | None = None,
         type: str | None = None,
         color: str | None = None,
@@ -48,6 +49,7 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
             end_id: エンドIDで絞り込み（省略可）
+            number: ショット番号で絞り込み（省略可）
             player_name: 選手名の部分一致で絞り込み（省略可）
             type: ショットタイプで絞り込み（省略可）
             color: ストーン色で絞り込み（"red" / "yellow"、省略可）
@@ -60,6 +62,8 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
 
         if end_id is not None:
             query = query.filter(Shot.end_id == end_id)
+        if number is not None:
+            query = query.filter(Shot.number == number)
         if player_name is not None:
             query = query.filter(Shot.player_name.ilike(f"%{player_name}%"))
         if type is not None:

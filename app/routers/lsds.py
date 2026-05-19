@@ -34,6 +34,7 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
         order: OrderDirection = OrderDirection.asc,
         game_id: int | None = None,
         team: str | None = None,
+        player_name: str | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[LsdResponse]:
         """LSD 一覧を取得する。
@@ -45,6 +46,7 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
             order: ソート方向（asc / desc）
             game_id: 試合IDで絞り込み（省略可）
             team: チーム名の部分一致で絞り込み（省略可）
+            player_name: 選手名の部分一致で絞り込み（省略可）
             db: DB セッション（依存性注入）
 
         Returns:
@@ -56,6 +58,8 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
             query = query.filter(Lsd.game_id == game_id)
         if team is not None:
             query = query.filter(Lsd.team.ilike(f"%{team}%"))
+        if player_name is not None:
+            query = query.filter(Lsd.player_name.ilike(f"%{player_name}%"))
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Lsd, sort.value)))

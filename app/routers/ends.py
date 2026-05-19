@@ -41,6 +41,7 @@ def create_router(
         sort: EndSortField = EndSortField.id,
         order: OrderDirection = OrderDirection.asc,
         game_id: int | None = None,
+        number: int | None = None,
         color_hammer: str | None = None,
         is_power_play: int | None = None,
         db: Session = Depends(get_db),
@@ -53,6 +54,7 @@ def create_router(
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
             game_id: 試合IDで絞り込み（省略可）
+            number: エンド番号で絞り込み（省略可）
             color_hammer: ハンマー色で絞り込み（"red" / "yellow"、省略可）
             is_power_play: パワープレイフラグで絞り込み（0 / 1、md のみ有効、省略可）
             db: DB セッション（依存性注入）
@@ -64,6 +66,8 @@ def create_router(
 
         if game_id is not None:
             query = query.filter(End.game_id == game_id)
+        if number is not None:
+            query = query.filter(End.number == number)
         if color_hammer is not None:
             query = query.filter(End.color_hammer == color_hammer)
         if is_power_play is not None:
