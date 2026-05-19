@@ -17,8 +17,8 @@ services:
       - ./app:/app/app
         # ホストの ./app をコンテナの /app/app にマウント
         # コードを変更すると即座にコンテナに反映される（開発時のみ）
-    command: >
-      uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload     # コード変更を自動検知して再起動（開発時のみ）
+    # コード変更を自動検知して再起動（開発時のみ）
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # ── PostgreSQL ────────────────────────────────────────────────
   db:
