@@ -91,38 +91,6 @@ async def validation_error_handler(
 # 同じルーター定義を md / normal 両方に使い回す。
 # ends と games は EndResponse（レスポンスモデル）も引数に取る（md/normal で異なるため）。
 
-# --- md DB ルーター ---
-app.include_router(
-    events.create_router(get_md_db, limiter, RATE_LIMIT),
-    prefix="/v1/md",
-    tags=["md / events"],
-)
-app.include_router(
-    games.create_router(get_md_db, EndMdResponse, limiter, RATE_LIMIT),
-    prefix="/v1/md",
-    tags=["md / games"],
-)
-app.include_router(
-    ends.create_router(get_md_db, EndMdResponse, limiter, RATE_LIMIT),
-    prefix="/v1/md",
-    tags=["md / ends"],
-)
-app.include_router(
-    shots.create_router(get_md_db, limiter, RATE_LIMIT),
-    prefix="/v1/md",
-    tags=["md / shots"],
-)
-app.include_router(
-    stones.create_router(get_md_db, limiter, RATE_LIMIT),
-    prefix="/v1/md",
-    tags=["md / stones"],
-)
-app.include_router(
-    lsds.create_router(get_md_db, limiter, RATE_LIMIT),
-    prefix="/v1/md",
-    tags=["md / lsds"],
-)
-
 # --- four DB ルーター ---
 app.include_router(
     events.create_router(get_four_db, limiter, RATE_LIMIT),
@@ -153,6 +121,38 @@ app.include_router(
     lsds.create_router(get_four_db, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / lsds"],
+)
+
+# --- md DB ルーター ---
+app.include_router(
+    events.create_router(get_md_db, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / events"],
+)
+app.include_router(
+    games.create_router(get_md_db, EndMdResponse, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / games"],
+)
+app.include_router(
+    ends.create_router(get_md_db, EndMdResponse, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / ends"],
+)
+app.include_router(
+    shots.create_router(get_md_db, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / shots"],
+)
+app.include_router(
+    stones.create_router(get_md_db, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / stones"],
+)
+app.include_router(
+    lsds.create_router(get_md_db, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / lsds"],
 )
 
 
