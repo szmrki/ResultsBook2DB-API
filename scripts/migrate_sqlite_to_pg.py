@@ -23,8 +23,8 @@ import sys
 import time
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, insert, text
+from sqlalchemy.orm import Session, sessionmaker
 
 # database.py が import 時に環境変数（DATABASE_URL_MD 等）を読むため、
 # app をインポートする前に .env を読み込む必要がある
@@ -170,7 +170,7 @@ def get_sqlite_rows(
     return cursor.fetchall()
 
 
-def reset_sequence(pg_session: sessionmaker, table_name: str) -> None:
+def reset_sequence(pg_session: Session, table_name: str) -> None:
     """PostgreSQL の SERIAL シーケンスを最大 ID に合わせてリセットする。
 
     SQLite から明示的に ID を指定して INSERT するため、
@@ -194,7 +194,7 @@ def reset_sequence(pg_session: sessionmaker, table_name: str) -> None:
 
 def migrate_table(
     sqlite_conn: sqlite3.Connection,
-    pg_session: sessionmaker,
+    pg_session: Session,
     table_info: dict,
 ) -> None:
     """1テーブル分のデータを SQLite → PostgreSQL に移行する。
@@ -224,10 +224,11 @@ def migrate_table(
     # rows[i:i+BATCH_SIZE] でスライスして、BATCH_SIZE 件ずつ INSERT する
     for i in range(0, total, BATCH_SIZE):
         batch = rows[i : i + BATCH_SIZE]
-        # dict(row) で sqlite3.Row を辞書に変換し、モデルのコンストラクタに渡す
-        # 例: Event(id=1, name="WMDCC2023", year=2023, category="MD")
-        pg_session.bulk_save_objects(
-            [model(**dict(row)) for row in batch]
+        # dict(row) で sqlite3.Row を辞書に変換し、INSERT 文にマッピングとして渡す
+        # SQLAlchemy 2.0 推奨の bulk insert 方式（bulk_save_objects はレガシー）
+        pg_session.execute(
+            insert(model),
+            [dict(row) for row in batch],
         )
         # バッチごとにコミットしてメモリを解放
         pg_session.commit()
@@ -242,7 +243,7 @@ def migrate_table(
 
 def verify_counts(
     sqlite_conn: sqlite3.Connection,
-    pg_session: sessionmaker,
+    pg_session: Session,
 ) -> bool:
     """SQLite と PostgreSQL のレコード件数が一致するか検証する。
 
