@@ -27,6 +27,11 @@ from app.schemas import EndMdResponse, EndFourResponse
 # get_remote_address: クライアントの IP アドレスをキーにしてリクエスト数を制限
 limiter = Limiter(key_func=get_remote_address)
 
+# 全エンドポイント共通のレートリミット上限
+# 変更する場合はここだけ修正すれば全体に反映される
+# 特定のエンドポイントだけ制限を変えたい場合は、そのルーター内でハードコードする
+RATE_LIMIT = "100/minute"
+
 # ─── FastAPI アプリ初期化 ──────────────────────────────────────────────────────
 app = FastAPI(
     title="ResultsBook2DB-API",
@@ -88,64 +93,64 @@ async def validation_error_handler(
 
 # --- md DB ルーター ---
 app.include_router(
-    events.create_router(get_md_db),
+    events.create_router(get_md_db, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / events"],
 )
 app.include_router(
-    games.create_router(get_md_db, EndMdResponse),
+    games.create_router(get_md_db, EndMdResponse, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / games"],
 )
 app.include_router(
-    ends.create_router(get_md_db, EndMdResponse),
+    ends.create_router(get_md_db, EndMdResponse, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / ends"],
 )
 app.include_router(
-    shots.create_router(get_md_db),
+    shots.create_router(get_md_db, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / shots"],
 )
 app.include_router(
-    stones.create_router(get_md_db),
+    stones.create_router(get_md_db, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / stones"],
 )
 app.include_router(
-    lsds.create_router(get_md_db),
+    lsds.create_router(get_md_db, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / lsds"],
 )
 
 # --- four DB ルーター ---
 app.include_router(
-    events.create_router(get_four_db),
+    events.create_router(get_four_db, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / events"],
 )
 app.include_router(
-    games.create_router(get_four_db, EndFourResponse),
+    games.create_router(get_four_db, EndFourResponse, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / games"],
 )
 app.include_router(
-    ends.create_router(get_four_db, EndFourResponse),
+    ends.create_router(get_four_db, EndFourResponse, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / ends"],
 )
 app.include_router(
-    shots.create_router(get_four_db),
+    shots.create_router(get_four_db, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / shots"],
 )
 app.include_router(
-    stones.create_router(get_four_db),
+    stones.create_router(get_four_db, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / stones"],
 )
 app.include_router(
-    lsds.create_router(get_four_db),
+    lsds.create_router(get_four_db, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / lsds"],
 )

@@ -2,7 +2,8 @@
 
 from collections.abc import Callable, Generator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
@@ -15,11 +16,17 @@ from app.schemas import (
 )
 
 
-def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRouter:
+def create_router(
+    get_db: Callable[[], Generator[Session, None, None]],
+    limiter: Limiter,
+    rate_limit: str,
+) -> APIRouter:
     """stones ルーターを生成して返すファクトリ関数。
 
     Args:
         get_db: DBセッションを yield するジェネレータ関数（get_md_db / get_four_db）
+        limiter: レートリミッターオブジェクト（main.py から渡される）
+        rate_limit: レートリミットの上限（例: "100/minute"）。main.py の RATE_LIMIT 定数を渡す
 
     Returns:
         APIRouter: 設定済みの stones ルーター
@@ -27,9 +34,11 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
     router = APIRouter()
 
     @router.get("/stones", response_model=ListResponse[StoneResponse])
+    @limiter.limit(rate_limit)
     def list_stones(
-        limit: int = 50,
-        offset: int = 0,
+        request: Request,  # noqa: ARG001
+        limit: int = Query(default=50, ge=1, le=1000),
+        offset: int = Query(default=0, ge=0),
         sort: StoneSortField = StoneSortField.id,
         order: OrderDirection = OrderDirection.asc,
         shot_id: int | None = None,
@@ -40,8 +49,9 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
         """ストーン座標一覧を取得する。
 
         Args:
-            limit: 取得件数の上限
-            offset: 取得開始位置
+            request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
+            limit: 取得件数の上限（1〜1000）
+            offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
             shot_id: 投球IDで絞り込み（省略可）
@@ -63,20 +73,21 @@ def create_router(get_db: Callable[[], Generator[Session, None, None]]) -> APIRo
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Stone, sort.value)))
-
         total = query.count()
         records = query.offset(offset).limit(limit).all()
-
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/stones/{stone_id}", response_model=StoneResponse)
+    @limiter.limit(rate_limit)
     def get_stone(
+        request: Request,  # noqa: ARG001
         stone_id: int,
         db: Session = Depends(get_db),
     ) -> StoneResponse:
         """ストーン座標を1件取得する。
 
         Args:
+            request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
             stone_id: 取得するストーンの ID
             db: DB セッション（依存性注入）
 
