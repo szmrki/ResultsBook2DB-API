@@ -22,7 +22,7 @@ services:
 
   # ── PostgreSQL ────────────────────────────────────────────────
   db:
-    image: postgres:16 # DockerHub の公式 PostgreSQL 16 イメージを使用
+    image: postgres:18 # DockerHub の公式 PostgreSQL 18 イメージを使用
     container_name: rb2db-pg
     environment:
       POSTGRES_USER: ${POSTGRES_USER} # DBユーザー名
@@ -34,8 +34,9 @@ services:
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
         # 初回起動時に rb2db_md / rb2db_four を自動作成する
         # ※ボリュームが既に存在する場合はinitは実行されない（docker compose down -v で再実行）
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
         # 名前付きボリュームでデータを永続化
+        # PostgreSQL 18+ はバージョン別サブディレクトリ（18/data）に保存するため /data を付けない
         # コンテナを削除してもデータは残る
     healthcheck:
       # コンテナが「起動中」ではなく「接続可能」かを確認する
