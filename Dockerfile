@@ -23,6 +23,7 @@ RUN uv sync --frozen --no-dev --no-cache
 
 # アプリケーションコードをコンテナにコピー
 COPY app/ ./app/
+COPY scripts/ ./scripts/
 
 # ポート8000を外部に公開することを宣言（ドキュメント的な意味合い）
 # 実際のポートマッピングは docker-compose.yml で行う
