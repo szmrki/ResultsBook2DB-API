@@ -28,8 +28,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER} # DBユーザー名
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # DBパスワード
       # POSTGRES_DB は指定しない（docker/init.sql で rb2db_md / rb2db_four を作成）
-    ports:
-      - "5432:5432" # ホストから直接 psql で接続したい場合に使う
+    # ports の記述を削除
+    # コンテナ間通信はdocker-composeの内部ネットワークで十分
+    # ports:
+      #- "5432:5432" # ホストから直接 psql で接続したい場合に使う
+      
     volumes:
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
         # 初回起動時に rb2db_md / rb2db_four を自動作成する
