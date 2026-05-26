@@ -1,7 +1,7 @@
 """games ルーター。試合の一覧・単一取得・配下のエンド一覧・LSD一覧を提供する。"""
 
 from collections.abc import Callable, Generator
-from typing import Union
+from typing import Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
@@ -80,7 +80,7 @@ def create_router(
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Game, sort.value)))
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[GameResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/games/{game_id}", response_model=GameResponse)
@@ -150,7 +150,7 @@ def create_router(
             .order_by(order_func(getattr(End, sort.value)))
         )
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[EndMdResponse | EndFourResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/games/{game_id}/lsds", response_model=ListResponse[LsdResponse])
@@ -192,7 +192,7 @@ def create_router(
             .order_by(order_func(getattr(Lsd, sort.value)))
         )
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[LsdResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     return router

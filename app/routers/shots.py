@@ -1,6 +1,7 @@
 """shots ルーター。ショットの一覧・単一取得・配下のストーン座標一覧を提供する。"""
 
 from collections.abc import Callable, Generator
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
@@ -84,7 +85,7 @@ def create_router(
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Shot, sort.value)))
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[ShotResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/shots/{shot_id}", response_model=ShotResponse)
@@ -151,7 +152,7 @@ def create_router(
             .order_by(order_func(getattr(Stone, sort.value)))
         )
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[StoneResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     return router

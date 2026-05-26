@@ -1,6 +1,7 @@
 """stones ルーター。ストーン座標の一覧・単一取得を提供する。"""
 
 from collections.abc import Callable, Generator
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
@@ -74,7 +75,7 @@ def create_router(
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Stone, sort.value)))
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[StoneResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/stones/{stone_id}", response_model=StoneResponse)

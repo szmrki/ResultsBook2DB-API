@@ -69,7 +69,7 @@ class OrderDirection(str, Enum):
 class EventSortField(str, Enum):
     """events テーブルのソート可能カラム。"""
     id = "id"
-    name = "name"
+    name = "name"  # type: ignore[assignment]
     year = "year"
     category = "category"
 

@@ -15,7 +15,7 @@ md DB / four DB は同じ6テーブル構成を共有。
 """
 
 from sqlalchemy import Column, Float, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 # database.py で定義した Base（ORMモデルの基底クラス）をインポート
 # すべてのモデルはこの Base を継承することで SQLAlchemy に認識される
@@ -44,7 +44,7 @@ class Event(Base):
     # relationship: games テーブルと紐づけ
     #   back_populates="event" → Game モデル側の .event 属性と対応
     #   cascade="all, delete-orphan" → この大会を削除すると配下の試合も連鎖削除
-    games: list["Game"] = relationship(
+    games: Mapped[list["Game"]] = relationship(
         "Game", back_populates="event", cascade="all, delete-orphan"
     )
 
@@ -80,12 +80,12 @@ class Game(Base):
     final_score_yellow = Column(Integer)
 
     # 親テーブル（events）への参照
-    event: "Event" = relationship("Event", back_populates="games")
+    event: Mapped["Event"] = relationship("Event", back_populates="games")
     # 子テーブル（ends / lsds）への参照
-    ends: list["End"] = relationship(
+    ends: Mapped[list["End"]] = relationship(
         "End", back_populates="game", cascade="all, delete-orphan"
     )
-    lsds: list["Lsd"] = relationship(
+    lsds: Mapped[list["Lsd"]] = relationship(
         "Lsd", back_populates="game", cascade="all, delete-orphan"
     )
 
@@ -120,8 +120,8 @@ class End(Base):
     # md DB 専用カラム。four DB では常に NULL のため nullable（デフォルト）のまま
     is_power_play = Column(Integer)
 
-    game: "Game" = relationship("Game", back_populates="ends")
-    shots: list["Shot"] = relationship(
+    game: Mapped["Game"] = relationship("Game", back_populates="ends")
+    shots: Mapped[list["Shot"]] = relationship(
         "Shot", back_populates="end", cascade="all, delete-orphan"
     )
 
@@ -155,8 +155,8 @@ class Shot(Base):
     turn = Column(String)
     percent_score = Column(Integer)
 
-    end: "End" = relationship("End", back_populates="shots")
-    stones: list["Stone"] = relationship(
+    end: Mapped["End"] = relationship("End", back_populates="shots")
+    stones: Mapped[list["Stone"]] = relationship(
         "Stone", back_populates="shot", cascade="all, delete-orphan"
     )
 
@@ -190,7 +190,7 @@ class Stone(Base):
     inhouse = Column(Integer)
     insheet = Column(Integer)
 
-    shot: "Shot" = relationship("Shot", back_populates="stones")
+    shot: Mapped["Shot"] = relationship("Shot", back_populates="stones")
 
 
 class Lsd(Base):
@@ -215,4 +215,4 @@ class Lsd(Base):
     player_name = Column(String)
     distance_cm = Column(Float)
 
-    game: "Game" = relationship("Game", back_populates="lsds")
+    game: Mapped["Game"] = relationship("Game", back_populates="lsds")

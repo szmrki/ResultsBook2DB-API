@@ -1,7 +1,7 @@
 """ends ルーター。エンドの一覧・単一取得・配下のショット一覧を提供する。"""
 
 from collections.abc import Callable, Generator
-from typing import Union
+from typing import Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
@@ -84,7 +84,7 @@ def create_router(
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(End, sort.value)))
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[EndMdResponse | EndFourResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/ends/{end_id}", response_model=end_response_model)
@@ -151,7 +151,7 @@ def create_router(
             .order_by(order_func(getattr(Shot, sort.value)))
         )
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[ShotResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     return router

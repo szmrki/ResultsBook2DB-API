@@ -1,6 +1,7 @@
 """events ルーター。大会の一覧・単一取得・配下の試合一覧を提供する。"""
 
 from collections.abc import Callable, Generator
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
@@ -67,7 +68,7 @@ def create_router(
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Event, sort.value)))
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[EventResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/events/{event_id}", response_model=EventResponse)
@@ -134,7 +135,7 @@ def create_router(
             .order_by(order_func(getattr(Game, sort.value)))
         )
         total = query.count()
-        records = query.offset(offset).limit(limit).all()
+        records = cast(list[GameResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     return router
