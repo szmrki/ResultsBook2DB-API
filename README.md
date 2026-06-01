@@ -50,6 +50,6 @@
 
 - Python 3.12 / FastAPI
 - SQLAlchemy（ORM）
-- PostgreSQL 16
+- PostgreSQL 18
 - Docker / docker-compose
 - uv（パッケージ管理）
