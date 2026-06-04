@@ -2,12 +2,16 @@
 FastAPI アプリケーションのエントリーポイント。
 
 ここでやること:
-  1. FastAPI インスタンスの作成
-  2. slowapi によるレートリミット設定（DoS 対策）
-  3. カスタムエラーハンドラの登録（レスポンス形式を統一）
-  4. md / normal 両 DB 用ルーターの登録
-  5. ヘルスチェックエンドポイントの定義
+  1. ログシステムの初期化
+  2. FastAPI インスタンスの作成
+  3. slowapi によるレートリミット設定（DoS 対策）
+  4. カスタムエラーハンドラの登録（レスポンス形式を統一）
+  5. ロギングミドルウェアの登録（リクエスト/レスポンストレース）
+  6. md / normal 両 DB 用ルーターの登録
+  7. ヘルスチェックエンドポイントの定義
 """
+
+import time
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -20,8 +24,13 @@ from slowapi.util import get_remote_address
 load_dotenv()
 
 from app.database import get_four_db, get_md_db  # noqa: E402
+from app.logging import get_logger, setup_logging  # noqa: E402
 from app.routers import ends, events, games, lsds, shots, stones  # noqa: E402
 from app.schemas import EndFourResponse, EndMdResponse  # noqa: E402
+
+# ─── ログ設定初期化 ───────────────────────────────────────────────────────────
+setup_logging()
+logger = get_logger(__name__)
 
 # ─── レートリミット設定 ───────────────────────────────────────────────────────
 # get_remote_address: クライアントの IP アドレスをキーにしてリクエスト数を制限
@@ -59,6 +68,9 @@ async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONR
     Returns:
         JSONResponse: {"detail": "...", "status_code": N} 形式のレスポンス
     """
+    logger.warning(
+        f"HTTP Exception occurred: status_code={exc.status_code}, detail={exc.detail}"
+    )
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, "status_code": exc.status_code},
@@ -80,10 +92,69 @@ async def validation_error_handler(
     Returns:
         JSONResponse: {"detail": [...], "status_code": 422} 形式のレスポンス
     """
+    logger.warning(f"Validation error occurred: {exc.errors()}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "status_code": 422},
     )
+
+
+# ─── ミドルウェア ──────────────────────────────────────────────────────────────
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next) -> JSONResponse:
+    """リクエスト・レスポンスをログに記録するミドルウェア。
+
+    リクエスト受信時刻とレスポンス送信時刻から処理時間を計測し、
+    ステータスコードと共にログ出力する。
+
+    Args:
+        request: FastAPI のリクエストオブジェクト
+        call_next: 次のミドルウェアまたはエンドポイントを実行するコルーチン
+
+    Returns:
+        レスポンスオブジェクト
+    """
+    # リクエスト受信時刻（ミリ秒単位）
+    start_time = time.time()
+
+    # 次の処理を実行
+    response = await call_next(request)
+
+    # レスポンス送信時刻から処理時間を計算
+    duration_ms = (time.time() - start_time) * 1000
+
+    # ログ出力
+    # ステータスコード 4xx / 5xx はWARNING、それ以外は INFO
+    log_level = "warning" if response.status_code >= 400 else "info"
+    log_func = logger.warning if log_level == "warning" else logger.info
+
+    log_func(
+        f'{request.method} {request.url.path} -> {response.status_code} ({duration_ms:.2f}ms)'
+    )
+
+    return response
+
+
+# ─── ライフサイクルイベント ────────────────────────────────────────────────────
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """アプリケーション起動時に実行される処理。
+
+    ログシステムが正常に動作していることを確認するため、
+    起動メッセージをログ出力する。
+    """
+    logger.info("Application started successfully")
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """アプリケーション終了時に実行される処理。
+
+    シャットダウンメッセージをログ出力する。
+    """
+    logger.info("Application is shutting down")
 
 
 # ─── ルーター登録 ──────────────────────────────────────────────────────────────
