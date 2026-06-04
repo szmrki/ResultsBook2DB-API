@@ -138,18 +138,27 @@ async def log_requests(
     # リクエスト受信時刻（ミリ秒単位）
     start_time = time.time()
 
-    # 次の処理を実行
-    response = await call_next(request)
+    # 次の処理を実行（予期しない例外はスタックトレース付きでログに残して再 raise）
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        logger.exception("Unhandled exception", exc_info=e)
+        raise
 
     # レスポンス送信時刻から処理時間を計算
     duration_ms = (time.time() - start_time) * 1000
 
     # ステータスコード 4xx / 5xx は WARNING、それ以外は INFO
     # duration_ms と status_code を extra に渡すことで JSON モード時に構造化フィールドとして出力される
+    client_ip = request.client.host if request.client else "unknown"
     log_func = logger.warning if response.status_code >= 400 else logger.info
     log_func(
-        f"{request.method} {request.url.path} -> {response.status_code}",
-        extra={"duration_ms": round(duration_ms, 2), "status_code": response.status_code},
+        f"{client_ip} {request.method} {request.url.path} -> {response.status_code}",
+        extra={
+            "client_ip": client_ip,
+            "duration_ms": round(duration_ms, 2),
+            "status_code": response.status_code,
+        },
     )
 
     return response

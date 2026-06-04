@@ -54,6 +54,8 @@ class JSONFormatter(logging.Formatter):
 
         # ログレコードの extra 属性に追加情報を詰めた場合はそれを含める
         # 例: logger.info("message", extra={"user_id": 123})
+        if hasattr(record, "client_ip"):
+            log_obj["client_ip"] = record.client_ip
         if hasattr(record, "user_id"):
             log_obj["user_id"] = record.user_id
         if hasattr(record, "request_id"):
