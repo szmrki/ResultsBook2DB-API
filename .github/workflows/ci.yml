@@ -30,6 +30,10 @@ jobs:
     # runs-on: どの OS のマシンで実行するか
     # ubuntu-latest は GitHub が無料で提供している Linux 環境
     runs-on: ubuntu-latest
+    # actions/checkout など GitHub 公式アクションを Node.js 24 で動かす設定。
+    # 2026/6/16 以降はこれがデフォルトになるため、先に明示しておく。
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       # ─── Step 1: リポジトリのコードを取得 ──────────────────────────
