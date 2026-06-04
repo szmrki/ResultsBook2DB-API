@@ -9,6 +9,7 @@ FastAPI アプリケーションのエントリーポイント。
   5. ヘルスチェックエンドポイントの定義
 """
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -16,12 +17,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from dotenv import load_dotenv
 load_dotenv()
 
-from app.database import get_four_db, get_md_db
-from app.routers import ends, events, games, lsds, shots, stones
-from app.schemas import EndMdResponse, EndFourResponse
+from app.database import get_four_db, get_md_db  # noqa: E402
+from app.routers import ends, events, games, lsds, shots, stones  # noqa: E402
+from app.schemas import EndFourResponse, EndMdResponse  # noqa: E402
 
 # ─── レートリミット設定 ───────────────────────────────────────────────────────
 # get_remote_address: クライアントの IP アドレスをキーにしてリクエスト数を制限

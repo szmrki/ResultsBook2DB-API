@@ -12,3 +12,41 @@ dependencies = [
     "sqlalchemy>=2.0.49",
     "uvicorn[standard]>=0.47.0",
 ]
+
+# ─── 開発用依存ライブラリ ────────────────────────────────────────────────────
+# [dependency-groups] は uv が採用している標準的な記法（PEP 735）。
+# 本番の [project].dependencies とは分けて管理することで、
+# 本番環境に不要なライブラリ（pytest など）を含めずに済む。
+[dependency-groups]
+dev = [
+    "pytest>=8.0",       # テストランナー
+    "httpx>=0.27",       # FastAPI の TestClient が内部で使う HTTP クライアント
+    "ruff>=0.9",         # リンター＆フォーマッター（flake8 + isort + black の代替）
+    "mypy>=1.15",        # 静的型チェッカー
+]
+
+# ─── pytest 設定 ─────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+# pytest がテストを探すディレクトリ（デフォルトはカレント全体）
+testpaths = ["tests"]
+
+# ─── ruff 設定 ───────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# E: pycodestyle エラー（インデント・空白など）
+# F: pyflakes（未使用 import など）
+# I: isort（import の並び順）
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+# app パッケージを「自プロジェクトのコード（first-party）」として認識させる。
+# これにより、stdlib → third-party → app の順に import が整理される。
+known-first-party = ["app"]
+
+# ─── mypy 設定 ───────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+# サードパーティ製ライブラリのスタブが無くてもエラーにしない
+ignore_missing_imports = true
