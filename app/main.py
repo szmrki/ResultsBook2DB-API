@@ -149,7 +149,7 @@ async def log_requests(
     duration_ms = (time.time() - start_time) * 1000
 
     # ステータスコード 4xx / 5xx は WARNING、それ以外は INFO
-    # duration_ms と status_code を extra に渡すことで JSON モード時に構造化フィールドとして出力される
+    # extra に渡すことで JSON モード時に構造化フィールドとして出力される
     client_ip = request.client.host if request.client else "unknown"
     log_func = logger.warning if response.status_code >= 400 else logger.info
     log_func(
