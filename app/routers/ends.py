@@ -39,7 +39,7 @@ def create_router(
     """
     router = APIRouter()
 
-    @router.get("/ends", response_model=ListResponse[end_response_model])
+    @router.get("/ends", response_model=ListResponse[end_response_model])  # type: ignore[valid-type]
     @limiter.limit(rate_limit)
     def list_ends(
         request: Request,  # noqa: ARG001

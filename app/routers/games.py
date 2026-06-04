@@ -110,7 +110,7 @@ def create_router(
 
     @router.get(
         "/games/{game_id}/ends",
-        response_model=ListResponse[end_response_model],
+        response_model=ListResponse[end_response_model],  # type: ignore[valid-type]
     )
     @limiter.limit(rate_limit)
     def list_game_ends(
