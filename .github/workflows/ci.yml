@@ -30,21 +30,17 @@ jobs:
     # runs-on: どの OS のマシンで実行するか
     # ubuntu-latest は GitHub が無料で提供している Linux 環境
     runs-on: ubuntu-latest
-    # actions/checkout など GitHub 公式アクションを Node.js 24 で動かす設定。
-    # 2026/6/16 以降はこれがデフォルトになるため、先に明示しておく。
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       # ─── Step 1: リポジトリのコードを取得 ──────────────────────────
       # actions/checkout は GitHub が公式提供するアクション。
       # これがないとワークフローのマシン上にコードが存在しない。
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ─── Step 2: Python 環境のセットアップ ──────────────────────────
       - name: Python をセットアップ
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -52,7 +48,7 @@ jobs:
       # uv は pip より高速なパッケージマネージャー。
       # astral-sh/setup-uv は uv 公式が提供するセットアップアクション。
       - name: uv をインストール
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v8
 
       # ─── Step 4: 依存ライブラリをインストール ────────────────────────
       # --dev を付けることで [dependency-groups].dev も含めてインストールする。
