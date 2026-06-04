@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.models import End, Shot
 from app.schemas import (
-    EndMdResponse,
     EndFourResponse,
+    EndMdResponse,
     EndSortField,
     ListResponse,
     OrderDirection,
@@ -84,7 +84,9 @@ def create_router(
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(End, sort.value)))
         total = query.count()
-        records = cast(list[EndMdResponse | EndFourResponse], query.offset(offset).limit(limit).all())
+        records = cast(
+            list[EndMdResponse | EndFourResponse], query.offset(offset).limit(limit).all()
+        )
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/ends/{end_id}", response_model=end_response_model)

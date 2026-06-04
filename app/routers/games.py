@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.models import End, Game, Lsd
 from app.schemas import (
-    EndMdResponse,
     EndFourResponse,
+    EndMdResponse,
     EndSortField,
     GameResponse,
     GameSortField,
@@ -150,7 +150,9 @@ def create_router(
             .order_by(order_func(getattr(End, sort.value)))
         )
         total = query.count()
-        records = cast(list[EndMdResponse | EndFourResponse], query.offset(offset).limit(limit).all())
+        records = cast(
+            list[EndMdResponse | EndFourResponse], query.offset(offset).limit(limit).all()
+        )
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     @router.get("/games/{game_id}/lsds", response_model=ListResponse[LsdResponse])

@@ -1,0 +1,75 @@
+# CI ワークフロー定義ファイル
+#
+# GitHub Actions の仕組み:
+#   .github/workflows/ 以下に YAML ファイルを置くと、
+#   GitHub が自動的に読み取ってワークフローとして登録する。
+#   YAML とはインデントで階層を表す設定ファイルの書き方。
+#
+# このファイルでやること:
+#   1. ruff でコードスタイルをチェック
+#   2. mypy で型チェック
+#   3. pytest でテストを実行
+#
+# 実行タイミング:
+#   - main ブランチへの push
+#   - main ブランチへの Pull Request
+
+name: CI  # GitHub の Actions タブに表示される名前
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── ジョブ定義 ────────────────────────────────────────────────────────
+  # jobs は並列で実行できる処理のまとまり。
+  # 今回は lint（コードチェック）と test を1つのジョブにまとめる。
+  lint-and-test:
+    # runs-on: どの OS のマシンで実行するか
+    # ubuntu-latest は GitHub が無料で提供している Linux 環境
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─── Step 1: リポジトリのコードを取得 ──────────────────────────
+      # actions/checkout は GitHub が公式提供するアクション。
+      # これがないとワークフローのマシン上にコードが存在しない。
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      # ─── Step 2: Python 環境のセットアップ ──────────────────────────
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ─── Step 3: uv のインストール ───────────────────────────────────
+      # uv は pip より高速なパッケージマネージャー。
+      # astral-sh/setup-uv は uv 公式が提供するセットアップアクション。
+      - name: uv をインストール
+        uses: astral-sh/setup-uv@v5
+
+      # ─── Step 4: 依存ライブラリをインストール ────────────────────────
+      # --dev を付けることで [dependency-groups].dev も含めてインストールする。
+      # （pytest / ruff / mypy が入る）
+      - name: 依存ライブラリをインストール
+        run: uv sync --dev
+
+      # ─── Step 5: ruff でリント ────────────────────────────────────────
+      # ruff check . → カレントディレクトリ以下の全 .py ファイルをチェック
+      # コードスタイルの問題（未使用 import など）があれば失敗する。
+      - name: ruff でリント
+        run: uv run ruff check .
+
+      # ─── Step 6: mypy で型チェック ────────────────────────────────────
+      # 型ヒントの整合性チェック。
+      # 例: int を受け取る関数に str を渡していたら失敗する。
+      - name: mypy で型チェック
+        run: uv run mypy app/
+
+      # ─── Step 7: pytest でテスト ──────────────────────────────────────
+      # -v: 各テストの結果を1行ずつ表示（verbose）
+      # --tb=short: テスト失敗時のトレースバックを短く表示
+      - name: pytest でテスト
+        run: uv run pytest tests/ -v --tb=short

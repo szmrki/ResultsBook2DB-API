@@ -10,12 +10,10 @@
   6. ソート（sort / order）が正しく動くか
 """
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import Event
-
 
 # ─── テストデータ作成用ヘルパー ────────────────────────────────────────────
 # テスト関数の中に書いても良いが、複数のテストで使い回すので関数にまとめる。

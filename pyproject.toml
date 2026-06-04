@@ -40,6 +40,11 @@ line-length = 100
 # I: isort（import の並び順）
 select = ["E", "F", "I"]
 
+[tool.ruff.lint.isort]
+# app パッケージを「自プロジェクトのコード（first-party）」として認識させる。
+# これにより、stdlib → third-party → app の順に import が整理される。
+known-first-party = ["app"]
+
 # ─── mypy 設定 ───────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.12"
