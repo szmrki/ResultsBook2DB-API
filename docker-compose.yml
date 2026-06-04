@@ -4,9 +4,9 @@ services:
     build: . # このディレクトリの Dockerfile を使ってイメージをビルド
     container_name: rb2db-api # コンテナの名前（docker ps で表示される）
     ports:
-      - "8000:8000"
-        # ホスト:コンテナ のポートマッピング
-        # ブラウザから localhost:8000 でアクセスできる
+      - "127.0.0.1:8000:8000"   
+        # サーバーの localhost のみ
+        # 現状は研究室サーバにアクセスできるユーザからのsshトンネルによるアクセスのみを想定
     environment:
       DATABASE_URL_MD: ${DATABASE_URL_MD}
       DATABASE_URL_FOUR: ${DATABASE_URL_FOUR}
