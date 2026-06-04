@@ -12,6 +12,8 @@ FastAPI アプリケーションのエントリーポイント。
 """
 
 import time
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -20,6 +22,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.responses import Response
 
 load_dotenv()
 
@@ -31,6 +34,24 @@ from app.schemas import EndFourResponse, EndMdResponse  # noqa: E402
 # ─── ログ設定初期化 ───────────────────────────────────────────────────────────
 setup_logging()
 logger = get_logger(__name__)
+
+
+# ─── ライフサイクルイベント ────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """アプリケーションのライフサイクル管理。
+
+    Args:
+        _app: FastAPI インスタンス（引数として必須だが未使用）
+
+    Yields:
+        None: 起動完了から終了開始までの間
+    """
+    logger.info("Application started successfully")
+    yield
+    logger.info("Application is shutting down")
+
 
 # ─── レートリミット設定 ───────────────────────────────────────────────────────
 # get_remote_address: クライアントの IP アドレスをキーにしてリクエスト数を制限
@@ -46,6 +67,7 @@ app = FastAPI(
     title="ResultsBook2DB-API",
     version="1.0.0",
     description="カーリング実試合データ API",
+    lifespan=lifespan,
 )
 
 # slowapi をアプリに紐づける
@@ -68,9 +90,6 @@ async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONR
     Returns:
         JSONResponse: {"detail": "...", "status_code": N} 形式のレスポンス
     """
-    logger.warning(
-        f"HTTP Exception occurred: status_code={exc.status_code}, detail={exc.detail}"
-    )
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, "status_code": exc.status_code},
@@ -92,7 +111,6 @@ async def validation_error_handler(
     Returns:
         JSONResponse: {"detail": [...], "status_code": 422} 形式のレスポンス
     """
-    logger.warning(f"Validation error occurred: {exc.errors()}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "status_code": 422},
@@ -102,7 +120,9 @@ async def validation_error_handler(
 # ─── ミドルウェア ──────────────────────────────────────────────────────────────
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next) -> JSONResponse:
+async def log_requests(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """リクエスト・レスポンスをログに記録するミドルウェア。
 
     リクエスト受信時刻とレスポンス送信時刻から処理時間を計測し、
@@ -124,37 +144,15 @@ async def log_requests(request: Request, call_next) -> JSONResponse:
     # レスポンス送信時刻から処理時間を計算
     duration_ms = (time.time() - start_time) * 1000
 
-    # ログ出力
-    # ステータスコード 4xx / 5xx はWARNING、それ以外は INFO
-    log_level = "warning" if response.status_code >= 400 else "info"
-    log_func = logger.warning if log_level == "warning" else logger.info
-
+    # ステータスコード 4xx / 5xx は WARNING、それ以外は INFO
+    # duration_ms と status_code を extra に渡すことで JSON モード時に構造化フィールドとして出力される
+    log_func = logger.warning if response.status_code >= 400 else logger.info
     log_func(
-        f'{request.method} {request.url.path} -> {response.status_code} ({duration_ms:.2f}ms)'
+        f"{request.method} {request.url.path} -> {response.status_code}",
+        extra={"duration_ms": round(duration_ms, 2), "status_code": response.status_code},
     )
 
     return response
-
-
-# ─── ライフサイクルイベント ────────────────────────────────────────────────────
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """アプリケーション起動時に実行される処理。
-
-    ログシステムが正常に動作していることを確認するため、
-    起動メッセージをログ出力する。
-    """
-    logger.info("Application started successfully")
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """アプリケーション終了時に実行される処理。
-
-    シャットダウンメッセージをログ出力する。
-    """
-    logger.info("Application is shutting down")
 
 
 # ─── ルーター登録 ──────────────────────────────────────────────────────────────

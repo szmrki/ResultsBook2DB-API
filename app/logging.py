@@ -13,6 +13,7 @@ JSON形式でのログ出力にも対応しており、ログ解析ツールと�
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from logging import LogRecord
 from typing import Any
 
@@ -27,11 +28,6 @@ class JSONFormatter(logging.Formatter):
         _timestamp_format: タイムスタンプのフォーマット文字列
     """
 
-    def __init__(self) -> None:
-        """初期化。タイムスタンプのフォーマットを設定する。"""
-        super().__init__()
-        self._timestamp_format = "%Y-%m-%dT%H:%M:%S"
-
     def format(self, record: LogRecord) -> str:
         """LogRecord を JSON 文字列に変換する。
 
@@ -42,8 +38,11 @@ class JSONFormatter(logging.Formatter):
             JSON 形式のログ文字列
         """
         # ログレコードの情報を辞書に詰める
+        # isoformat(timespec="milliseconds") で "2026-06-04T12:34:56.789+00:00" 形式になる
         log_obj: dict[str, Any] = {
-            "timestamp": self.formatTime(record, self._timestamp_format),
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(
+                timespec="milliseconds"
+            ),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
