@@ -49,6 +49,11 @@ def create_router(
         offset: int = Query(default=0, ge=0),
         sort: EventSortField = EventSortField.id,
         order: OrderDirection = OrderDirection.asc,
+        name: str | None = None,
+        year: int | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
+        category: str | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[EventResponse]:
         """大会一覧を取得する。
@@ -59,12 +64,29 @@ def create_router(
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
+            name: 大会名の部分一致で絞り込み（省略可）
+            year: 開催年の完全一致で絞り込み（省略可）
+            year_from: 開催年の範囲指定・始点（省略可）
+            year_to: 開催年の範囲指定・終点（省略可）
+            category: カテゴリの完全一致で絞り込み（省略可）
             db: DB セッション（依存性注入）
 
         Returns:
             ListResponse[EventResponse]: 総件数・ページネーション情報・大会リスト
         """
         query = db.query(Event)
+
+        if name is not None:
+            query = query.filter(Event.name.ilike(f"%{name}%"))
+        if year is not None:
+            query = query.filter(Event.year == year)
+        if year_from is not None:
+            query = query.filter(Event.year >= year_from)
+        if year_to is not None:
+            query = query.filter(Event.year <= year_to)
+        if category is not None:
+            query = query.filter(Event.category == category)
+
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Event, sort.value)))
         total = query.count()
