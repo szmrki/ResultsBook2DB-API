@@ -13,7 +13,7 @@
 
 ## エンドポイント
 
-`/v1/four/` と `/v1/four/` に同じ構造のエンドポイントがあります。
+`/v1/four/` と `/v1/md/` に同じ構造のエンドポイントがあります。
 
 | メソッド | URL | 説明 |
 |---|---|---|
@@ -45,6 +45,57 @@
 | `order` | `asc` | ソート方向（`asc` / `desc`） |
 
 テーブルごとのフィルタパラメータや詳細なレスポンス形式は `/docs` を参照してください。
+
+## 使用例
+
+以下の例では `BASE_URL` をサーバーのアドレスに置き換えてください。
+
+### 大会一覧を取得する
+
+```bash
+curl "$BASE_URL/v1/four/events"
+```
+
+### 特定の大会の試合一覧を取得する
+
+```bash
+# まず大会 ID を確認する
+curl "$BASE_URL/v1/four/events"
+
+# ID=1 の大会の試合を取得する
+curl "$BASE_URL/v1/four/events/1/games"
+```
+
+### ページネーションとソートを使う
+
+```bash
+# 新しい順に10件取得する（2件目から）
+curl "$BASE_URL/v1/four/games?limit=10&offset=0&sort=id&order=desc"
+```
+
+### 特定の試合のエンドデータを取得する
+
+```bash
+# game_id=1 の試合の全エンドを取得する
+curl "$BASE_URL/v1/four/ends?game_id=1"
+```
+
+### ストーン座標データを取得する
+
+```bash
+# shot_id=1 の投球後のストーン座標を取得する
+curl "$BASE_URL/v1/four/shots/1/stones"
+```
+
+### ミックスダブルス（md）のデータを取得する
+
+```bash
+# md DB の大会一覧（four を md に変えるだけ）
+curl "$BASE_URL/v1/md/events"
+
+# パワープレイが使われたエンドを絞り込む（md のみ）
+curl "$BASE_URL/v1/md/ends?is_power_play=1"
+```
 
 ## 技術スタック
 
