@@ -17,6 +17,7 @@ from app.schemas import (
     OrderDirection,
     ShotResponse,
     ShotSortField,
+    StoneColor,
 )
 
 
@@ -49,7 +50,7 @@ def create_router(
         order: OrderDirection = OrderDirection.asc,
         game_id: int | None = None,
         number: int | None = None,
-        color_hammer: str | None = None,
+        color_hammer: StoneColor | None = None,
         is_power_play: int | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse:

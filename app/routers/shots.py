@@ -14,6 +14,8 @@ from app.schemas import (
     OrderDirection,
     ShotResponse,
     ShotSortField,
+    ShotTurn,
+    StoneColor,
     StoneResponse,
     StoneSortField,
 )
@@ -48,7 +50,8 @@ def create_router(
         number: int | None = None,
         player_name: str | None = None,
         type: str | None = None,
-        color: str | None = None,
+        color: StoneColor | None = None,
+        turn: ShotTurn | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[ShotResponse]:
         """ショット一覧を取得する。
@@ -81,6 +84,8 @@ def create_router(
             query = query.filter(Shot.type == type)
         if color is not None:
             query = query.filter(Shot.color == color)
+        if turn is not None:
+            query = query.filter(Shot.turn == turn)
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Shot, sort.value)))
