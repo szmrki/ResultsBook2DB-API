@@ -8,7 +8,7 @@ from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from app.models import Shot, Stone
+from app.models import End, Shot, Stone
 from app.schemas import (
     ListResponse,
     OrderDirection,
@@ -46,6 +46,7 @@ def create_router(
         offset: int = Query(default=0, ge=0),
         sort: ShotSortField = ShotSortField.id,
         order: OrderDirection = OrderDirection.asc,
+        game_id: int | None = None,
         end_id: int | None = None,
         number: int | None = None,
         player_name: str | None = None,
@@ -74,6 +75,8 @@ def create_router(
         """
         query = db.query(Shot)
 
+        if game_id is not None:
+            query = query.join(End).filter(End.game_id == game_id)
         if end_id is not None:
             query = query.filter(Shot.end_id == end_id)
         if number is not None:
