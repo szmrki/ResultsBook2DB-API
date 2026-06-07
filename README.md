@@ -59,10 +59,10 @@ curl "$BASE_URL/v1/four/events"
 ### 特定の大会の試合一覧を取得する
 
 ```bash
-# まず大会 ID を確認する
-curl "$BASE_URL/v1/four/events"
+# 大会名・年で絞り込んで ID を確認する
+curl "$BASE_URL/v1/four/events?name=WMDCC&year=2024"
 
-# ID=1 の大会の試合を取得する
+# その ID の試合一覧を取得する
 curl "$BASE_URL/v1/four/events/1/games"
 ```
 

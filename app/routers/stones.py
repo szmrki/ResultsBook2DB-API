@@ -12,6 +12,7 @@ from app.models import Stone
 from app.schemas import (
     ListResponse,
     OrderDirection,
+    StoneColor,
     StoneResponse,
     StoneSortField,
 )
@@ -43,7 +44,7 @@ def create_router(
         sort: StoneSortField = StoneSortField.id,
         order: OrderDirection = OrderDirection.asc,
         shot_id: int | None = None,
-        color: str | None = None,
+        color: StoneColor | None = None,
         inhouse: int | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[StoneResponse]:

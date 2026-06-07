@@ -8,12 +8,14 @@ from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from app.models import Shot, Stone
+from app.models import End, Shot, Stone
 from app.schemas import (
     ListResponse,
     OrderDirection,
     ShotResponse,
     ShotSortField,
+    ShotTurn,
+    StoneColor,
     StoneResponse,
     StoneSortField,
 )
@@ -44,11 +46,13 @@ def create_router(
         offset: int = Query(default=0, ge=0),
         sort: ShotSortField = ShotSortField.id,
         order: OrderDirection = OrderDirection.asc,
+        game_id: int | None = None,
         end_id: int | None = None,
         number: int | None = None,
         player_name: str | None = None,
         type: str | None = None,
-        color: str | None = None,
+        color: StoneColor | None = None,
+        turn: ShotTurn | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[ShotResponse]:
         """ショット一覧を取得する。
@@ -71,6 +75,8 @@ def create_router(
         """
         query = db.query(Shot)
 
+        if game_id is not None:
+            query = query.join(End).filter(End.game_id == game_id)
         if end_id is not None:
             query = query.filter(Shot.end_id == end_id)
         if number is not None:
@@ -81,6 +87,8 @@ def create_router(
             query = query.filter(Shot.type == type)
         if color is not None:
             query = query.filter(Shot.color == color)
+        if turn is not None:
+            query = query.filter(Shot.turn == turn)
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Shot, sort.value)))

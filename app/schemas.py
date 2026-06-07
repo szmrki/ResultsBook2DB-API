@@ -66,6 +66,18 @@ class OrderDirection(str, Enum):
     desc = "desc"
 
 
+class StoneColor(str, Enum):
+    """ストーン色。ends / shots / stones の color 系フィルタで共用する。"""
+    red = "red"
+    yellow = "yellow"
+
+
+class ShotTurn(str, Enum):
+    """投球のターン（回転）方向。"""
+    cw = "cw"
+    ccw = "ccw"
+
+
 class EventSortField(str, Enum):
     """events テーブルのソート可能カラム。"""
     id = "id"
