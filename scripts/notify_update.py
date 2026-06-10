@@ -20,6 +20,7 @@ update_db.sh から呼び出される。
 import argparse
 import json
 import os
+import re
 import sqlite3
 
 import requests
@@ -61,7 +62,14 @@ def get_columns(conn: sqlite3.Connection, table: str) -> list[str]:
 
     Returns:
         list[str]: カラム名のリスト
+
+    Raises:
+        ValueError: テーブル名が英数字・アンダースコア以外を含む場合
     """
+    # テーブル名は識別子なのでプレースホルダーで渡せない
+    # 英数字とアンダースコアのみ許可してSQLインジェクションを防ぐ
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table):
+        raise ValueError(f"不正なテーブル名: {table!r}")
     # PRAGMA table_info はカラムの定義情報を返す（row[1] がカラム名）
     cursor = conn.execute(f"PRAGMA table_info({table})")
     return [row[1] for row in cursor.fetchall()]
@@ -72,11 +80,18 @@ def count_rows(conn: sqlite3.Connection, table: str) -> int:
 
     Args:
         conn: SQLite接続オブジェクト
-        table: テーブル名
+        table: テーブル名（TARGET_TABLES に含まれる値のみ受け付ける）
 
     Returns:
         int: 行数
+
+    Raises:
+        ValueError: TARGET_TABLES に含まれないテーブル名が渡された場合
     """
+    # テーブル名は識別子なのでプレースホルダーで渡せない
+    # TARGET_TABLES のホワイトリストで許可済みの名前のみ実行する
+    if table not in TARGET_TABLES:
+        raise ValueError(f"許可されていないテーブル名: {table!r}")
     cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")  # noqa: S608
     return cursor.fetchone()[0]
 

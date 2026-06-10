@@ -35,7 +35,9 @@ if [ ! -f ".env" ]; then
     echo "エラー: .envファイルが見つかりません"
     exit 1
 fi
+set -a  # 以降の変数代入を自動的に export する
 source .env
+set +a  # 自動 export を解除
 
 # ── DB名の設定 ──────────────────────────────────────────────────
 if [ "$TARGET" = "md" ]; then
@@ -61,7 +63,8 @@ echo ""
 # 1. コンテナ内にsqliteディレクトリを作成
 echo "[1/4] コンテナにSQLiteファイルをコピー中..."
 docker exec rb2db-api mkdir -p /app/sqlite
-docker cp "$SQLITE_FILE" rb2db-api:/app/sqlite/$(basename "$SQLITE_FILE")
+BASENAME=$(basename "$SQLITE_FILE")
+docker cp "$SQLITE_FILE" "rb2db-api:/app/sqlite/${BASENAME}"
 echo "      完了"
 
 # 2. 移行スクリプト実行
