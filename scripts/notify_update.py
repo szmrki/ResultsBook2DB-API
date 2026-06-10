@@ -9,7 +9,7 @@ update_db.sh から呼び出される。
   PYTHONPATH=. uv run python scripts/notify_update.py \
       --target md \
       --new-file sqlite/md_260514.db \
-      --prev-file sqlite/md_260514.db.prev
+      --prev-file sqlite/md.prev.db
 
   # 初回実行（旧ファイルなし）
   PYTHONPATH=. uv run python scripts/notify_update.py \
@@ -253,12 +253,10 @@ def build_prompt(diff: dict) -> str:
 
 要件:
 - 冒頭に「【CurlingDB更新通知】{target_label}」というタイトルを入れる
-- スキーマ変更があった場合は必ず明記する
+- スキーマ変更（テーブル・カラムの追加/削除）があった場合は必ず明記する
 - 追加された大会名は具体的に列挙する
-- 新規選手名がある場合は列挙する
 - データ件数の変化を簡潔に伝える
 - 全体で200文字以内に収める
-- 絵文字を適度に使って読みやすくする
 
 差分情報:
 {json.dumps(diff, ensure_ascii=False, indent=2)}
@@ -284,7 +282,7 @@ def call_gemini(prompt: str) -> str:
     # google-genai（新SDK）の使い方: Client を作成してモデルを呼び出す
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3.5-flash",
         contents=prompt,
     )
     return response.text

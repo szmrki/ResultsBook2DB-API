@@ -46,19 +46,17 @@ fi
 
 PG_URL="postgresql://curling:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}"
 
+# ── prev ファイルパスの設定 ──────────────────────────────────────
+# ターゲットごとに固定パスで管理する（入力ファイル名に依存しない）
+# これにより normal_260610.db → normal_260611.db のようにファイル名が変わっても
+# 前回実行時のファイルと正しく比較できる
+PREV_FILE="sqlite/${TARGET}.prev.db"
+
 # ── 処理開始 ────────────────────────────────────────────────────
 echo "=== DB更新開始: ${TARGET} ==="
 echo "SQLiteファイル: ${SQLITE_FILE}"
 echo "移行先DB: ${DB_NAME}"
 echo ""
-
-# 0. 旧SQLiteファイルをバックアップ（差分検出用）
-#    .prev ファイルを notify_update.py が旧データとして参照する
-PREV_FILE="${SQLITE_FILE}.prev"
-if [ -f "$SQLITE_FILE" ]; then
-    cp "$SQLITE_FILE" "$PREV_FILE"
-    echo "旧ファイルをバックアップ: ${PREV_FILE}"
-fi
 
 # 1. コンテナ内にsqliteディレクトリを作成
 echo "[1/4] コンテナにSQLiteファイルをコピー中..."
@@ -84,18 +82,23 @@ fi
 # 4. Slack通知
 echo "[4/4] Slack通知中..."
 if [ -f "$PREV_FILE" ]; then
-    # .prev ファイルがある場合は旧データとの差分を検出して通知
+    # prev ファイルがある場合は前回実行時のファイルとの差分を通知
     PYTHONPATH=. uv run python scripts/notify_update.py \
         --target "$TARGET" \
         --new-file "$SQLITE_FILE" \
         --prev-file "$PREV_FILE"
 else
-    # 初回実行時（.prev がない）は全件数のみ通知
-    echo "      旧ファイルが存在しないため差分検出をスキップ（初回実行）"
+    # 初回実行時（prev がない）は全件数のみ通知
+    echo "      前回ファイルが存在しないため差分検出をスキップ（初回実行）"
     PYTHONPATH=. uv run python scripts/notify_update.py \
         --target "$TARGET" \
         --new-file "$SQLITE_FILE"
 fi
+
+# 5. 今回のファイルを次回比較用として保存
+#    通知が終わってから保存することで、次回実行時に正しく前回分として使われる
+cp "$SQLITE_FILE" "$PREV_FILE"
+echo "次回比較用ファイルを保存: ${PREV_FILE}"
 
 echo ""
 echo "=== DB更新完了: ${TARGET} ==="
