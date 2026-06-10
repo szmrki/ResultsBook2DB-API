@@ -248,6 +248,25 @@ def detect_initial(new_file: str, target: str) -> dict:
         conn.close()
 
 
+# ─── 通知文の生成 ─────────────────────────────────────────────────────────────
+
+
+def format_initial_message(diff: dict) -> str:
+    """初回登録時の定型通知文を生成する（Gemini API を使わない）。
+
+    Args:
+        diff: detect_initial の返り値
+
+    Returns:
+        str: Slack に投稿する通知文字列
+    """
+    target_label = TARGET_LABELS.get(diff["target"], diff["target"])
+    lines = [f"【CurlingDB初回登録】{target_label}"]
+    for table, count in diff["data_counts"].items():
+        lines.append(f"・{table}: {count:,} 件")
+    return "\n".join(lines)
+
+
 # ─── Gemini API ───────────────────────────────────────────────────────────────
 
 
@@ -370,10 +389,15 @@ def main() -> None:
     print("差分情報:")
     print(json.dumps(diff, ensure_ascii=False, indent=2))
 
-    # ── Gemini APIで通知文を生成 ────────────────────────────────────
-    print("Gemini APIで通知文を生成中...")
-    prompt = build_prompt(diff)
-    message = call_gemini(prompt)
+    # ── 通知文の生成 ──────────────────────────────────────────────
+    # 初回登録は定型文、差分更新は Gemini API で自然文を生成する
+    if diff.get("is_initial"):
+        print("初回登録: 定型文を生成...")
+        message = format_initial_message(diff)
+    else:
+        print("Gemini APIで通知文を生成中...")
+        prompt = build_prompt(diff)
+        message = call_gemini(prompt)
     print(f"生成された通知文:\n{message}")
 
     # ── Slackに投稿 ─────────────────────────────────────────────────
