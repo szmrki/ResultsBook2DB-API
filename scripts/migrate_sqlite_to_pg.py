@@ -84,6 +84,9 @@ TABLES = [
         "columns": [
             "id", "shot_id", "color", "x", "y",
             "distance_from_center", "inhouse", "insheet",
+            # shot_order は four DB のみ保持。md DB には列が無いため
+            # migrate_table の積集合ロジックで自動的に除外され NULL になる
+            "shot_order",
         ],
     },
     {

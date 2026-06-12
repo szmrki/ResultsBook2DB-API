@@ -46,6 +46,7 @@ def create_router(
         shot_id: int | None = None,
         color: StoneColor | None = None,
         inhouse: int | None = None,
+        shot_order: int | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[StoneResponse]:
         """ストーン座標一覧を取得する。
@@ -59,6 +60,7 @@ def create_router(
             shot_id: 投球IDで絞り込み（省略可）
             color: ストーン色で絞り込み（"red" / "yellow"、省略可）
             inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）
+            shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）
             db: DB セッション（依存性注入）
 
         Returns:
@@ -72,6 +74,8 @@ def create_router(
             query = query.filter(Stone.color == color)
         if inhouse is not None:
             query = query.filter(Stone.inhouse == inhouse)
+        if shot_order is not None:
+            query = query.filter(Stone.shot_order == shot_order)
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Stone, sort.value)))

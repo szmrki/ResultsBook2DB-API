@@ -72,7 +72,11 @@ class Game(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     # ForeignKey("events.id") → events テーブルの id カラムを参照
     # ondelete="CASCADE"      → DB側でも連鎖削除を有効化
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"))
+    # index=True → 親IDで子を絞り込むクエリ（games?event_id=...）を高速化する
+    #   PostgreSQL は FK 制約を張っても参照側に自動でインデックスを作らないため明示する
+    event_id = Column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True
+    )
     page = Column(Integer)
     team_red = Column(String)
     team_yellow = Column(String)
@@ -111,7 +115,10 @@ class End(Base):
     __tablename__ = "ends"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"))
+    # index=True → ends?game_id=... での絞り込みを高速化
+    game_id = Column(
+        Integer, ForeignKey("games.id", ondelete="CASCADE"), index=True
+    )
     page = Column(Integer)
     number = Column(Integer)
     color_hammer = Column(String)
@@ -146,7 +153,8 @@ class Shot(Base):
     __tablename__ = "shots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    end_id = Column(Integer, ForeignKey("ends.id", ondelete="CASCADE"))
+    # index=True → shots?end_id=... での絞り込みを高速化（shots は約4.5万行）
+    end_id = Column(Integer, ForeignKey("ends.id", ondelete="CASCADE"), index=True)
     number = Column(Integer)
     color = Column(String)
     team = Column(String)
@@ -176,19 +184,27 @@ class Stone(Base):
         distance_from_center: センター（ティー）からの距離（フィート）
         inhouse: ハウス内フラグ（1=ハウス内, 0=ハウス外）
         insheet: シート内フラグ（1=シート内, 0=シート外）
+        shot_order: このストーンが何投目に投げられたかを示す投球順。
+            盤面に残る各ストーンの由来投球を保持する。
+            現状は four DB のみ保持（md DB では NULL、今後対応予定）
         shot: 対応投球オブジェクト（relationship）
     """
 
     __tablename__ = "stones"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    shot_id = Column(Integer, ForeignKey("shots.id", ondelete="CASCADE"))
+    # index=True → stones?shot_id=... での絞り込みを高速化
+    #   stones は約72万行と最大のテーブルなので、未インデックスだと毎回フルスキャンになる
+    shot_id = Column(Integer, ForeignKey("shots.id", ondelete="CASCADE"), index=True)
     color = Column(String)
     x = Column(Float)
     y = Column(Float)
     distance_from_center = Column(Float)
     inhouse = Column(Integer)
     insheet = Column(Integer)
+    # 片方のDBのみ持つカラムは nullable にしておく（is_power_play と同じ方針）
+    # 移行スクリプトは models.py ∩ SQLite の積集合を移すため、列が無いDBでは自動で NULL になる
+    shot_order = Column(Integer)
 
     shot: Mapped["Shot"] = relationship("Shot", back_populates="stones")
 
@@ -210,7 +226,10 @@ class Lsd(Base):
     __tablename__ = "lsds"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"))
+    # index=True → game_id での絞り込みを高速化
+    game_id = Column(
+        Integer, ForeignKey("games.id", ondelete="CASCADE"), index=True
+    )
     team = Column(String)
     player_name = Column(String)
     distance_cm = Column(Float)
