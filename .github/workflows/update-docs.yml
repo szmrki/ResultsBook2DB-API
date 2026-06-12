@@ -1,0 +1,56 @@
+name: Update API docs
+
+# app/ や pyproject.toml が main に入ったときに openapi.json を再生成して
+# docs/ に保存する。GitHub Pages の表示が常に最新の状態になる。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "pyproject.toml"
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # docs/openapi.json を自動コミットするために必要
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+
+      - name: Generate openapi.json
+        # サーバーを起動せず FastAPI の app オブジェクトから直接生成する。
+        # create_engine() は接続を試みないためダミー URL で問題ない。
+        env:
+          DATABASE_URL_MD: postgresql://dummy:dummy@localhost/dummy
+          DATABASE_URL_FOUR: postgresql://dummy:dummy@localhost/dummy
+          POSTGRES_PASSWORD: dummy
+          POSTGRES_USER: dummy
+        run: |
+          uv run python -c "
+          import json
+          from app.main import app
+          with open('docs/openapi.json', 'w', encoding='utf-8') as f:
+              json.dump(app.openapi(), f, ensure_ascii=False, indent=2)
+              f.write('\n')
+          print('docs/openapi.json を生成しました')
+          "
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/openapi.json
+          # 差分がない場合はコミットしない
+          git diff --staged --quiet && echo "変更なし、スキップ" && exit 0
+          VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          git commit -m "chore: openapi.json を v${VERSION} に更新"
+          git push
