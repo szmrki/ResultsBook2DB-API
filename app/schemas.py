@@ -120,6 +120,7 @@ class StoneSortField(str, Enum):
     x = "x"
     y = "y"
     distance_from_center = "distance_from_center"
+    shot_order = "shot_order"
 
 
 class LsdSortField(str, Enum):
@@ -204,6 +205,8 @@ class StoneResponse(ORMBase):
     distance_from_center: float | None
     inhouse: int | None
     insheet: int | None
+    # four DB のみ保持（md DB では NULL、今後対応予定）
+    shot_order: int | None
 
 
 class LsdResponse(ORMBase):

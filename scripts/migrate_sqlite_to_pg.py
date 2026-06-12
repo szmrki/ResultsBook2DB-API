@@ -18,6 +18,7 @@ PostgreSQL に全削除→再投入（full refresh）する。
 """
 
 import argparse
+import re
 import sqlite3
 import sys
 import time
@@ -42,55 +43,25 @@ from app.models import End, Event, Game, Lsd, Shot, Stone  # noqa: E402
 # stones（100万件超）を考慮して 5000 件に設定。
 BATCH_SIZE = 5000
 
-# テーブル情報の定義
-# 投入順序は外部キー制約に従う（親テーブルから順に）
-# - sqlite_table: SQLite 側のテーブル名
+# 移行するモデルを投入順に並べる（外部キー制約に従い親テーブルから順に）
+# events → games → ends → shots → stones、および games の子の lsds
+_MODELS_IN_ORDER = [Event, Game, End, Shot, Stone, Lsd]
+
+# テーブル情報を各モデルから自動生成する
+# - sqlite_table: SQLite 側のテーブル名（= モデルの __tablename__）
 # - model: SQLAlchemy モデルクラス
-# - columns: 移行対象のカラム名リスト（SQLite のカラム名と一致させる）
+# - columns: 移行対象カラム名リスト（モデル定義から取得）
+#
+# columns をモデルから導出することで、models.py にカラムを追加すれば
+# 移行対象にも自動で反映される。ハードコードだとここへの追記漏れで
+# 新カラムが静かに移行されない事故が起きるため、二重管理を避けている。
 TABLES = [
     {
-        "sqlite_table": "events",
-        "model": Event,
-        "columns": ["id", "name", "year", "category"],
-    },
-    {
-        "sqlite_table": "games",
-        "model": Game,
-        "columns": [
-            "id", "event_id", "page",
-            "team_red", "team_yellow",
-            "final_score_red", "final_score_yellow",
-        ],
-    },
-    {
-        "sqlite_table": "ends",
-        "model": End,
-        "columns": [
-            "id", "game_id", "page", "number",
-            "color_hammer", "score_red", "score_yellow", "is_power_play",
-        ],
-    },
-    {
-        "sqlite_table": "shots",
-        "model": Shot,
-        "columns": [
-            "id", "end_id", "number", "color",
-            "team", "player_name", "type", "turn", "percent_score",
-        ],
-    },
-    {
-        "sqlite_table": "stones",
-        "model": Stone,
-        "columns": [
-            "id", "shot_id", "color", "x", "y",
-            "distance_from_center", "inhouse", "insheet",
-        ],
-    },
-    {
-        "sqlite_table": "lsds",
-        "model": Lsd,
-        "columns": ["id", "game_id", "team", "player_name", "distance_cm"],
-    },
+        "sqlite_table": model.__tablename__,
+        "model": model,
+        "columns": [column.name for column in model.__table__.columns],
+    }
+    for model in _MODELS_IN_ORDER
 ]
 
 
@@ -117,6 +88,32 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# SQL識別子（テーブル名・カラム名）として許可するパターン
+# 英字またはアンダースコア始まりの、英数字・アンダースコアのみの文字列
+_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _safe_identifier(name: str) -> str:
+    """SQL識別子を検証してそのまま返す。
+
+    テーブル名・カラム名はプレースホルダー（?）で渡せず f-string で
+    SQL に埋め込む必要があるため、埋め込み前に許可パターンで検証して
+    SQLインジェクションを防ぐ。
+
+    Args:
+        name: テーブル名またはカラム名
+
+    Returns:
+        str: 検証を通過した識別子（入力をそのまま返す）
+
+    Raises:
+        ValueError: 許可パターンに一致しない場合
+    """
+    if not _IDENTIFIER_RE.fullmatch(name):
+        raise ValueError(f"不正なSQL識別子: {name!r}")
+    return name
+
+
 def get_sqlite_columns(sqlite_conn: sqlite3.Connection, table_name: str) -> list[str]:
     """SQLite テーブルに存在するカラム名の一覧を取得する。
 
@@ -130,6 +127,7 @@ def get_sqlite_columns(sqlite_conn: sqlite3.Connection, table_name: str) -> list
     Returns:
         list[str]: カラム名のリスト
     """
+    table_name = _safe_identifier(table_name)
     cursor = sqlite_conn.execute(f"PRAGMA table_info({table_name})")  # noqa: S608
     return [row[1] for row in cursor.fetchall()]
 
@@ -144,6 +142,7 @@ def get_sqlite_count(sqlite_conn: sqlite3.Connection, table_name: str) -> int:
     Returns:
         int: レコード件数
     """
+    table_name = _safe_identifier(table_name)
     cursor = sqlite_conn.execute(f"SELECT COUNT(*) FROM {table_name}")  # noqa: S608
     return cursor.fetchone()[0]
 
@@ -165,7 +164,9 @@ def get_sqlite_rows(
     """
     # row_factory を設定すると、row["id"] のように辞書風にアクセスできる
     sqlite_conn.row_factory = sqlite3.Row
-    cols = ", ".join(columns)
+    table_name = _safe_identifier(table_name)
+    # カラム名も1つずつ検証してから連結する
+    cols = ", ".join(_safe_identifier(column) for column in columns)
     cursor = sqlite_conn.execute(f"SELECT {cols} FROM {table_name}")  # noqa: S608
     return cursor.fetchall()
 
@@ -181,6 +182,7 @@ def reset_sequence(pg_session: Session, table_name: str) -> None:
         pg_session: PostgreSQL のセッション
         table_name: テーブル名
     """
+    table_name = _safe_identifier(table_name)
     # setval(): シーケンスの現在値を設定する PostgreSQL 関数
     # pg_get_serial_sequence(): テーブルの id カラムに紐づくシーケンス名を取得
     # COALESCE(): MAX(id) が NULL（テーブルが空）の場合は 1 を返す
