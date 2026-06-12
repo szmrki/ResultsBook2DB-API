@@ -12,8 +12,10 @@ FastAPI アプリケーションのエントリーポイント。
 """
 
 import time
+import tomllib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -63,9 +65,14 @@ limiter = Limiter(key_func=get_remote_address)
 RATE_LIMIT = "100/minute"
 
 # ─── FastAPI アプリ初期化 ──────────────────────────────────────────────────────
+# バージョンは pyproject.toml から読む（二重管理を防ぐため）
+_pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+with _pyproject_path.open("rb") as _f:
+    _VERSION = tomllib.load(_f)["project"]["version"]
+
 app = FastAPI(
     title="ResultsBook2DB API",
-    version="1.0.0",
+    version=_VERSION,
     description="""
 WCF主催のカーリング国際大会の実試合データを提供する REST API。
 
