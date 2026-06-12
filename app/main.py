@@ -64,9 +64,19 @@ RATE_LIMIT = "100/minute"
 
 # ─── FastAPI アプリ初期化 ──────────────────────────────────────────────────────
 app = FastAPI(
-    title="ResultsBook2DB-API",
+    title="ResultsBook2DB API",
     version="1.0.0",
-    description="カーリング実試合データ API",
+    description="""
+WCF主催のカーリング国際大会の実試合データを提供する REST API。
+
+[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、
+投球ごとのストーン座標・スコア・選手データを取得できます。
+
+- **four DB**: 男子・女子・ジュニアカテゴリの試合データ
+- **md DB**: ミックスダブルスカテゴリの試合データ
+
+> API 本体は研究室内限定公開です。
+""",
     lifespan=lifespan,
 )
 
