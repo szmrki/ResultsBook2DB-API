@@ -106,3 +106,12 @@ curl "$BASE_URL/v1/md/ends?is_power_play=1"
 - PostgreSQL 18
 - Docker / docker-compose
 - uv（パッケージ管理）
+
+## データの取り扱いと免責事項
+
+* 本ツールは、カーリングの戦術分析を目的とした **研究・分析用途の個人開発プロジェクト** です。[CURLIT](https://curlit.com/) 社および [WCF (World Curling Federation)](https://worldcurling.org/) とは一切関係のない **非公式** ツールです。
+* **本リポジトリにはデータベースの実体 (`.db` / PDF 等) を一切含みません。** 公開しているのは API のソースコードとスキーマ定義のみです。
+
+## ライセンス
+
+本ソフトウェアは **MIT License** の下で公開されています。詳細は [LICENSE](LICENSE) を参照してください。
