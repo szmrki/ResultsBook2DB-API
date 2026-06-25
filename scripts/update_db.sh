@@ -46,7 +46,10 @@ else
     DB_NAME="rb2db_four"
 fi
 
-PG_URL="postgresql://curling:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}"
+# PG_URL はコマンド引数に渡すとプロセス一覧にパスワードが露出するため、
+# 環境変数 DATABASE_URL として渡す。migrate_sqlite_to_pg.py 側で読み込む。
+DATABASE_URL="postgresql://curling:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}"
+export DATABASE_URL
 
 # ── prev ファイルパスの設定 ──────────────────────────────────────
 # ターゲットごとに固定パスで管理する（入力ファイル名に依存しない）
@@ -69,9 +72,10 @@ echo "      完了"
 
 # 2. 移行スクリプト実行
 echo "[2/4] データ移行中..."
-docker exec -it rb2db-api \
+# DATABASE_URL を環境変数としてコンテナに渡す（--pg-url 引数を使わない）
+docker exec -it -e DATABASE_URL="${DATABASE_URL}" rb2db-api \
     sh -c "PYTHONPATH=/app uv run python scripts/migrate_sqlite_to_pg.py \
-    sqlite/$(basename "$SQLITE_FILE") --pg-url ${PG_URL}"
+    sqlite/$(basename "$SQLITE_FILE")"
 
 # 3. 完了確認
 echo ""

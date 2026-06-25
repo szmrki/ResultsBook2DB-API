@@ -18,6 +18,7 @@ PostgreSQL に全削除→再投入（full refresh）する。
 """
 
 import argparse
+import os
 import re
 import sqlite3
 import sys
@@ -68,8 +69,15 @@ TABLES = [
 def parse_args() -> argparse.Namespace:
     """コマンドライン引数をパースする。
 
+    --pg-url を省略した場合は環境変数 DATABASE_URL にフォールバックする。
+    パスワードをコマンド引数に含めるとプロセス一覧に露出するため、
+    通常は .env の DATABASE_URL を使い --pg-url は省略することを推奨する。
+
     Returns:
         argparse.Namespace: sqlite_path と pg_url を含む引数オブジェクト
+
+    Raises:
+        SystemExit: --pg-url も DATABASE_URL も設定されていない場合
     """
     parser = argparse.ArgumentParser(
         description="SQLite → PostgreSQL データ移行スクリプト",
@@ -77,15 +85,28 @@ def parse_args() -> argparse.Namespace:
     # 位置引数: SQLite ファイルのパス
     parser.add_argument(
         "sqlite_path",
-        help="移行元の SQLite ファイルパス（例: memo/md_260514.db）",
+        help="移行元の SQLite ファイルパス（例: sqlite/md_260514.db）",
     )
     # オプション引数: PostgreSQL の接続URL
+    # 省略時は環境変数 DATABASE_URL にフォールバックする（パスワード漏洩防止）
     parser.add_argument(
         "--pg-url",
-        required=True,
-        help="PostgreSQL の接続URL（例: postgresql://user:pass@localhost:5432/rb2db_md）",
+        default=None,
+        help=(
+            "PostgreSQL の接続URL（例: postgresql://user:pass@localhost:5432/rb2db_md）。"
+            "省略時は環境変数 DATABASE_URL を使用する"
+        ),
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # --pg-url が省略された場合は環境変数から取得する
+    if args.pg_url is None:
+        args.pg_url = os.environ.get("DATABASE_URL")
+    if not args.pg_url:
+        parser.error(
+            "--pg-url が指定されておらず、環境変数 DATABASE_URL も設定されていません"
+        )
+    return args
 
 
 # SQL識別子（テーブル名・カラム名）として許可するパターン
