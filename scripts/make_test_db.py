@@ -407,6 +407,80 @@ def add_table(conn: sqlite3.Connection, name: str) -> None:
     print(f"  テーブル {name!r} を追加")
 
 
+def flip_stone_y(conn: sqlite3.Connection) -> None:
+    """stones.y を軸反転させる（座標反転バグの再現）。
+
+    y を中心軸（約 76.81 = 2 * 38.405）に対して反転する。
+    件数は変わらず y の分布だけが変わるため、連続値の値修正検出のテストに使う。
+
+    Args:
+        conn: SQLite接続オブジェクト
+
+    Returns:
+        None
+    """
+    # ハウス中心の y 座標の2倍を対称軸として反転する
+    # 例: y=36.5 → 76.81 - 36.5 = 40.31
+    center_y2 = 76.81
+    conn.execute(f"UPDATE stones SET y = {center_y2} - y")  # noqa: S608
+    cnt = conn.execute("SELECT COUNT(*) FROM stones").fetchone()[0]
+    print(f"  stones.y を軸反転しました（{cnt:,} 件）")
+
+
+def flip_stone_x(conn: sqlite3.Connection) -> None:
+    """stones.x を符号反転させる（左右反転バグの再現）。
+
+    x の符号を反転する。x は対称軸（AVG≈0）なので平均は変わらないが、
+    MIN/MAX の符号が入れ替わるため、三点セット比較で検出できることを確認できる。
+
+    Args:
+        conn: SQLite接続オブジェクト
+
+    Returns:
+        None
+    """
+    conn.execute("UPDATE stones SET x = -x")
+    cnt = conn.execute("SELECT COUNT(*) FROM stones").fetchone()[0]
+    print(f"  stones.x を符号反転しました（{cnt:,} 件）")
+
+
+def modify_score(conn: sqlite3.Connection) -> None:
+    """既存の ends/games のスコアを一部書き換える（スコア修正バグ再現）。
+
+    ends の score_red を +1 した値に更新する（最大値を超えないよう 0 でリセットも許容）。
+    件数は変わらずスコア分布だけが変わるため、離散値の値修正検出のテストに使う。
+
+    Args:
+        conn: SQLite接続オブジェクト
+
+    Returns:
+        None
+    """
+    # score_red が 0 の行を 1 に、1 の行を 0 にスワップすることでシンプルに分布を変える
+    conn.execute("UPDATE ends SET score_red = CASE WHEN score_red = 0 THEN 1 ELSE 0 END")
+    cnt = conn.execute("SELECT COUNT(*) FROM ends").fetchone()[0]
+    print(f"  ends.score_red を反転しました（{cnt:,} 件）")
+
+
+def modify_percent(conn: sqlite3.Connection) -> None:
+    """既存の shots.percent_score を一部書き換える（スコア修正バグ再現）。
+
+    percent_score = 0 の行を 25 に変更する。
+    件数は変わらず分布だけが変わるため、離散値の値修正検出のテストに使う。
+
+    Args:
+        conn: SQLite接続オブジェクト
+
+    Returns:
+        None
+    """
+    conn.execute("UPDATE shots SET percent_score = 25 WHERE percent_score = 0")
+    cnt = conn.execute(
+        "SELECT COUNT(*) FROM shots WHERE percent_score = 25"
+    ).fetchone()[0]
+    print(f"  shots.percent_score = 0 → 25 に変更（変更後 25 の件数: {cnt:,} 件）")
+
+
 def mutate(args: argparse.Namespace) -> None:
     """ベースDBをコピーして指定された変異を加えた new DB を作る。
 
@@ -430,6 +504,15 @@ def mutate(args: argparse.Namespace) -> None:
                 add_column(conn, spec)
         if args.add_events:
             add_events(conn, args.add_events)
+        # 値修正系（件数を変えずに値だけ変える）
+        if getattr(args, "flip_stone_y", False):
+            flip_stone_y(conn)
+        if getattr(args, "flip_stone_x", False):
+            flip_stone_x(conn)
+        if getattr(args, "modify_score", False):
+            modify_score(conn)
+        if getattr(args, "modify_percent", False):
+            modify_percent(conn)
         conn.commit()
     finally:
         conn.close()
@@ -498,6 +581,23 @@ def main() -> None:
     p_mutate.add_argument(
         "--add-table", action="append", default=[], metavar="NAME",
         help="追加するテーブル名（複数指定可）例: --add-table experimental",
+    )
+    # 値修正系オプション（件数を変えずに値だけ変える。値修正検出のテスト用）
+    p_mutate.add_argument(
+        "--flip-stone-y", action="store_true",
+        help="stones.y を軸反転（座標反転バグ再現）。連続値の変化検出テスト用",
+    )
+    p_mutate.add_argument(
+        "--flip-stone-x", action="store_true",
+        help="stones.x を符号反転（左右反転バグ再現）。MIN/MAX 変化の検出テスト用",
+    )
+    p_mutate.add_argument(
+        "--modify-score", action="store_true",
+        help="ends.score_red を反転（スコア修正バグ再現）。離散値の変化検出テスト用",
+    )
+    p_mutate.add_argument(
+        "--modify-percent", action="store_true",
+        help="shots.percent_score の 0 を 25 に変更。離散値の変化検出テスト用",
     )
 
     args = parser.parse_args()
