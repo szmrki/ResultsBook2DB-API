@@ -39,6 +39,7 @@ PostgreSQL や update_db.sh を一切経由せず、ローカルのSQLiteファ�
 
 import argparse
 import re
+import math
 import shutil
 import sqlite3
 
@@ -187,6 +188,11 @@ ENDS_PER_GAME = 10          # 1試合あたりのエンド数
 SHOTS_PER_END = 16         # 1エンドあたりのショット数（4人×2投×赤黄）
 STONES_PER_SHOT = 2        # 1ショットあたりのストーン配置数（適当）
 
+# 実データで取りうる percent_score の値（0/25/50/75/100）。
+# これをローテーションで割り当てることで実データの分布に寄せる。
+# 乱数ではなく決定的に回すことでテストの再現性を保つ。
+PERCENT_SCORE_VALUES = [0, 25, 50, 75, 100]
+
 
 def _insert_row(conn: sqlite3.Connection, table: str, values: dict[str, object]) -> int:
     """テーブルに1行INSERTし、採番された rowid を返す。
@@ -240,9 +246,12 @@ def add_events(conn: sqlite3.Connection, count: int) -> None:
 
     for i in range(count):
         # ── events（大会） ────────────────────────────────────────
+        # 実データの大会名は "ECC2022Men" のような英数字。category は "Men"/"Women"。
+        # それに倣い、テスト大会も英数字で生成する（末尾を A/B/... で区別）。
+        suffix = chr(ord("A") + i) if i < 26 else str(i + 1)
         event_id = _insert_row(
             conn, "events",
-            {"name": f"テストカップ{i + 1}", "year": 2026, "category": "test"},
+            {"name": f"TestCup2026{suffix}", "year": 2026, "category": "Men"},
         )
 
         # 子テーブルが無いDBもありうるので、存在チェックしながら下位を作る
@@ -255,8 +264,9 @@ def add_events(conn: sqlite3.Connection, count: int) -> None:
             {
                 "event_id": event_id,
                 "page": 1,
-                "team_red": "テスト赤",
-                "team_yellow": "テスト黄",
+                # 実データのチーム名は "SUI - Switzerland" のような英語表記
+                "team_red": "TST - TestTeamRed",
+                "team_yellow": "TSY - TestTeamYellow",
                 "final_score_red": 5,
                 "final_score_yellow": 4,
             },
@@ -297,11 +307,17 @@ def add_events(conn: sqlite3.Connection, count: int) -> None:
                         "end_id": end_id,
                         "number": shot_no,
                         "color": color,
-                        "team": "テスト赤" if color == "red" else "テスト黄",
-                        "player_name": f"テスト選手{shot_no}",
-                        "type": "draw",
-                        "turn": "in",
-                        "percent_score": 100,
+                        # 実データに倣う:
+                        #   team        … "TST - TestTeamRed" など英語表記
+                        #   player_name … "McMILLAN H" のように姓大文字＋イニシャル
+                        #   type        … "Draw" など先頭大文字の英語
+                        #   turn        … "cw"/"ccw"（小文字）
+                        "team": "TST - TestTeamRed" if color == "red" else "TSY - TestTeamYellow",
+                        "player_name": f"TESTPLAYER {chr(ord('A') + (shot_no - 1) % 26)}",
+                        "type": "Draw",
+                        "turn": "cw" if shot_no % 2 == 1 else "ccw",
+                        # 実データ準拠の 0/25/50/75/100 をローテーションで割り当てる
+                        "percent_score": PERCENT_SCORE_VALUES[shot_no % len(PERCENT_SCORE_VALUES)],
                     },
                 )
                 totals["shots"] += 1
@@ -310,16 +326,27 @@ def add_events(conn: sqlite3.Connection, count: int) -> None:
                     continue
 
                 # ── stones（ストーン配置） ───────────────────────
+                # 実データの値域に寄せる（乱数を使わず決定的に散らす）:
+                #   x  … 約 -2.2〜2.3、 y … 約 32〜40.5（ハウス周辺）
+                #   distance_from_center … 約 0〜6.6（x と中心からのyズレから算出）
+                #   shot_order … -16〜16
                 for stone_no in range(1, STONES_PER_SHOT + 1):
+                    # stone_no で少しずつ位置をずらす（再現性のため固定の計算式）
+                    x = -2.0 + 0.5 * stone_no
+                    y = 36.0 + 0.5 * stone_no
+                    # ハウス中心を y=38.405 付近と仮定し、そこからの距離を求める
+                    center_y = 38.405
+                    distance = math.hypot(x, y - center_y)
                     _insert_row(
                         conn, "stones",
                         {
                             "shot_id": shot_id,
                             "color": color,
-                            "x": 0,
-                            "y": 0,
-                            "distance_from_center": 100,
-                            "inhouse": 1,
+                            "x": x,
+                            "y": y,
+                            "distance_from_center": distance,
+                            # distance がハウス半径(約1.83m)以内なら inhouse=1
+                            "inhouse": 1 if distance <= 1.83 else 0,
                             "insheet": 1,
                             # normal(four) DB にしか無いカラム。存在しなければ無視
                             "shot_order": stone_no,
