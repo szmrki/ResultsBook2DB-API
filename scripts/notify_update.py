@@ -38,7 +38,13 @@ import re
 import sqlite3
 
 import requests
+from dotenv import load_dotenv
 from google import genai
+
+# .env を読み込み、GEMINI_API_KEY / SLACK_WEBHOOK_URL などを環境変数に載せる。
+# load_dotenv() は .env の内容を os.environ に展開するだけで、値の中身には触れない。
+# 既に環境変数が設定されている場合はそちらを優先する（上書きしない）。
+load_dotenv()
 
 # 差分検出・件数カウントの対象テーブル（存在しないテーブルはスキップ）
 TARGET_TABLES = ["events", "games", "ends", "shots", "stones", "lsds"]
