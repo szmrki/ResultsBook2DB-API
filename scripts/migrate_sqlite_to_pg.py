@@ -319,7 +319,9 @@ def main() -> None:
             print(f"  {table_name}: テーブルなし（スキップ）")
 
     # ─── PostgreSQL 接続 ──────────────────────────────────────────────────
-    print(f"\nPostgreSQL: {args.pg_url}")
+    # パスワードをマスクして表示する（URL をそのまま出力するとパスワードが漏れる）
+    masked_url = re.sub(r"(?<=://)([^:]+):([^@]+)@", r"\1:****@", args.pg_url)
+    print(f"\nPostgreSQL: {masked_url}")
     pg_engine = create_engine(args.pg_url)
     PgSession = sessionmaker(bind=pg_engine)
     pg_session = PgSession()
