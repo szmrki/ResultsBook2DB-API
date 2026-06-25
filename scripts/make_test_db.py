@@ -38,8 +38,8 @@ PostgreSQL や update_db.sh を一切経由せず、ローカルのSQLiteファ�
 """
 
 import argparse
-import re
 import math
+import re
 import shutil
 import sqlite3
 

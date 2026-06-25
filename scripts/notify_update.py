@@ -376,8 +376,8 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
                     p = prev_stats[event_name]
                     n = new_stats[event_name]
                     avg_diff = abs(n["avg"] - p["avg"])
-                    # AVG が閾値超、AVG の符号が変わった、または MIN/MAX の符号が変わった場合に変化あり。
-                    # AVG の符号変化は x 座標の符号反転のように avg≈0 のカラムでも検出できる。
+                    # AVG が閾値超・AVG の符号変化・MIN/MAX の符号変化のいずれかで変化あり。
+                    # AVG の符号変化により avg≈0 の x 座標の符号反転も検出できる。
                     sign_changed = (
                         (p["avg"] < 0) != (n["avg"] < 0)
                         or (p["min"] < 0) != (n["min"] < 0)
