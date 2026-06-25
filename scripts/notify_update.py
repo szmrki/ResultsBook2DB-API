@@ -15,6 +15,20 @@ update_db.sh から呼び出される。
   PYTHONPATH=. uv run python scripts/notify_update.py \
       --target md \
       --new-file sqlite/md_260514.db
+
+  # テスト用: Slackに飛ばさず生成文だけ確認する
+  PYTHONPATH=. uv run python scripts/notify_update.py \
+      --target md \
+      --new-file sqlite/test_new.db \
+      --prev-file sqlite/test_base.db \
+      --dry-run
+
+  # テスト用: Gemini も呼ばず構造化差分とプロンプトだけ確認する
+  PYTHONPATH=. uv run python scripts/notify_update.py \
+      --target md \
+      --new-file sqlite/test_new.db \
+      --prev-file sqlite/test_base.db \
+      --no-llm
 """
 
 import argparse
@@ -366,6 +380,14 @@ def main() -> None:
         "--prev-file", default=None,
         help="旧SQLiteファイルのパス（省略時は初回実行として件数のみ通知）",
     )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Slackに投稿せず、生成された通知文を標準出力に出すだけにする（テスト用）",
+    )
+    parser.add_argument(
+        "--no-llm", action="store_true",
+        help="Gemini APIを呼ばず、構造化された差分JSONの確認だけ行う（テスト用）",
+    )
     args = parser.parse_args()
 
     # ── ファイル存在チェック ────────────────────────────────────────
@@ -389,6 +411,17 @@ def main() -> None:
     print("差分情報:")
     print(json.dumps(diff, ensure_ascii=False, indent=2))
 
+    # ── --no-llm: 構造化差分の確認だけ行う ──────────────────────────
+    # Gemini も Slack も呼ばず、上で出力した差分JSONの確認に留める。
+    # プロンプトに渡る構造化データそのものを検証したいときに使う。
+    if args.no_llm:
+        if not diff.get("is_initial"):
+            # 実際に Gemini に渡るプロンプト文字列も確認できるようにする
+            print("\n生成されるプロンプト:")
+            print(build_prompt(diff))
+        print("\n--no-llm 指定のため、通知文生成・Slack投稿はスキップしました")
+        return
+
     # ── 通知文の生成 ──────────────────────────────────────────────
     # 初回登録は定型文、差分更新は Gemini API で自然文を生成する
     if diff.get("is_initial"):
@@ -401,6 +434,11 @@ def main() -> None:
     print(f"生成された通知文:\n{message}")
 
     # ── Slackに投稿 ─────────────────────────────────────────────────
+    # --dry-run のときは投稿せず、生成文の確認だけで終える
+    if args.dry_run:
+        print("\n--dry-run 指定のため、Slack投稿はスキップしました")
+        return
+
     print("Slackに投稿中...")
     post_to_slack(message)
     print("Slack通知完了")
