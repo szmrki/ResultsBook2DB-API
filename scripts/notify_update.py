@@ -283,7 +283,7 @@ def build_prompt(diff: dict) -> str:
 これを研究室メンバー向けに簡潔でわかりやすい日本語の通知文に変換してください。
 
 この通知で読み手が知りたいのは「何が新しく増えたか・構造がどう変わったか」という
-定性的な事実です。具体的な件数は元データ（PDF）を見れば分かるため主役ではありません。
+定性的な事実です。具体的な件数は主役ではなく、補足として軽く触れる程度で十分です。
 
 要件（重要度の高い順）:
 - 冒頭に「【CurlingDB更新通知】{target_label}」というタイトルを入れる
@@ -291,7 +291,7 @@ def build_prompt(diff: dict) -> str:
 - 【最優先】スキーマ変更（テーブル・カラムの追加/削除）があれば必ず明記する。
   特にカラム追加は「どのテーブルに何というカラムが増えたか」を具体的に書く
 - データ件数の増減は「補足」として軽く触れる程度に留める（数字の羅列にしない）。
-  目安として「○試合分のデータが追加されました」のように規模感が伝われば十分
+  「○試合分のデータが追加されました」のように規模感が伝われば十分
 - 追加要素が無い項目（added_names が空、スキーマ変更なし等）はわざわざ言及しない
 - 全体で200文字以内に収める
 
@@ -319,7 +319,7 @@ def call_gemini(prompt: str) -> str:
     # google-genai（新SDK）の使い方: Client を作成してモデルを呼び出す
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model="gemini-3.5-flash",
+        model="gemini-3.1-flash-lite",
         contents=prompt,
     )
     return response.text
