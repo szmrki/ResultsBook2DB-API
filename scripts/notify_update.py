@@ -91,6 +91,16 @@ CONTINUOUS_THRESHOLD: dict[str, float] = {
     "lsds.distance_cm":             1.0,
 }
 
+# 自由文字列カラムの集合差分検出対象。
+# 大会ごとに「出現する値の集合」を prev/new で比較し、消えた値・現れた値を出す。
+# 件数が同じで集合が変わっていれば表記ゆれ修正とみなす。
+STRING_COLUMNS: list[str] = [
+    "games.team_red",
+    "games.team_yellow",
+    "shots.team",
+    "lsds.team",
+]
+
 
 # ─── SQLiteユーティリティ ─────────────────────────────────────────────────────
 
@@ -292,6 +302,37 @@ def _get_continuous_stats(
     }
 
 
+def _get_string_sets(
+    conn: sqlite3.Connection, table: str, column: str
+) -> dict[str, set[str]]:
+    """大会ごとに文字列カラムの出現値集合を取得する。
+
+    Args:
+        conn: SQLite接続オブジェクト
+        table: 対象テーブル名
+        column: 対象カラム名
+
+    Returns:
+        dict[str, set[str]]: {大会名: {値, ...}} の辞書。
+            テーブルまたはカラムが存在しない場合は空辞書。
+    """
+    try:
+        join_sql = _build_join_to_events(table)
+        sql = (
+            f"SELECT DISTINCT events.name, {table}.{column} "  # noqa: S608
+            f"{join_sql} "
+            f"WHERE {table}.{column} IS NOT NULL"
+        )
+        rows = conn.execute(sql).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+
+    result: dict[str, set[str]] = {}
+    for event_name, value in rows:
+        result.setdefault(event_name, set()).add(str(value))
+    return result
+
+
 def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
     """件数が変わらない値修正を、大会ごとの集計比較で検出する。
 
@@ -309,10 +350,11 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
     Returns:
         list[dict]: 変化が検出されたカラムごとの情報リスト。各要素は:
             - col_key (str): "table.column" 形式
-            - kind (str): "discrete" または "continuous"
+            - kind (str): "discrete", "continuous", または "string"
             - changes (list[dict]): 変化があった大会ごとの詳細
               - discrete: {"event": ..., "diff": {値: (before, after)}}
               - continuous: {"event": ..., "before": stats, "after": stats}
+              - string: {"event": ..., "removed": [...], "added": [...]}
             - sort_score (float): ソート用スコア（大きいほど変化量が大きい）
     """
     prev_conn = sqlite3.connect(prev_file)
@@ -320,6 +362,7 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
 
     discrete_results: list[dict] = []
     continuous_results: list[dict] = []
+    string_results: list[dict] = []
 
     try:
         for col_key, kind in COLUMN_KIND.items():
@@ -403,6 +446,41 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
                         "sort_score": total_avg_diff,
                     })
 
+        # ── 文字列カラム（集合差分） ─────────────────────────────────
+        for col_key in STRING_COLUMNS:
+            table, column = col_key.split(".", 1)
+            prev_sets = _get_string_sets(prev_conn, table, column)
+            new_sets = _get_string_sets(new_conn, table, column)
+
+            common_events = set(prev_sets) & set(new_sets)
+            changes = []
+            total_diff_count = 0
+
+            for event_name in sorted(common_events):
+                p = prev_sets[event_name]
+                n = new_sets[event_name]
+                removed = sorted(p - n)
+                added = sorted(n - p)
+                if removed or added:
+                    total_diff_count += len(removed) + len(added)
+                    changes.append({
+                        "event": event_name,
+                        "removed": removed,
+                        "added": added,
+                    })
+
+            if changes:
+                changes.sort(
+                    key=lambda c: len(c["removed"]) + len(c["added"]),
+                    reverse=True,
+                )
+                string_results.append({
+                    "col_key": col_key,
+                    "kind": "string",
+                    "changes": changes,
+                    "sort_score": float(total_diff_count),
+                })
+
     finally:
         prev_conn.close()
         new_conn.close()
@@ -410,9 +488,10 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
     # 種別内でソート（種別をまたぐ順位付けはしない）
     discrete_results.sort(key=lambda r: r["sort_score"], reverse=True)
     continuous_results.sort(key=lambda r: r["sort_score"], reverse=True)
+    string_results.sort(key=lambda r: r["sort_score"], reverse=True)
 
-    # 離散値を先、連続値を後にまとめて返す
-    return discrete_results + continuous_results
+    # 離散値 → 文字列 → 連続値の順にまとめて返す
+    return discrete_results + string_results + continuous_results
 
 
 # ─── 差分検出 ─────────────────────────────────────────────────────────────────
@@ -621,6 +700,7 @@ def build_prompt(diff: dict) -> str:
 
 要件（重要度の高い順）:
 - 冒頭に「【CurlingDB更新通知】{target_label}」というタイトルを入れる
+- 「今回の更新内容は以下の通りです。」から本文を開始する。
 - 【最優先】追加された大会名（added_names）があれば、必ず具体的に列挙する
 - 【最優先】スキーマ変更（テーブル・カラムの追加/削除）があれば必ず明記する。
   特にカラム追加は「どのテーブルに何というカラムが増えたか」を具体的に書く
@@ -630,6 +710,7 @@ def build_prompt(diff: dict) -> str:
 - データ件数の増減は「補足」として軽く触れる程度に留める（数字の羅列にしない）
 - 箇条書きを使う場合は「・ 」（記号＋半角スペース）の形式にする
 - 追加要素が無い項目（added_names が空、スキーマ変更なし等）はわざわざ言及しない
+- バッククォートやコードブロックは使わない
 - 全体で300文字以内に収める
 
 差分情報:
