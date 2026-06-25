@@ -15,8 +15,8 @@ PostgreSQL や update_db.sh を一切経由せず、ローカルのSQLiteファ�
           events を起点に外部キー（FK）を辿って関連行だけ抜き出す。
 
   mutate  ベースDBをコピーし、そこに「変更」を加えた new DB を作る。
-          大会追加・カラム追加・テーブル追加・プレイヤー追加などを
-          組み合わせて指定でき、差分検出が拾うべきパターンを再現する。
+          大会追加（試合・エンド・ショット・ストーンも連動）・カラム追加・
+          テーブル追加を組み合わせて指定でき、差分検出が拾うべきパターンを再現する。
 
 典型的な使い方:
 
@@ -180,9 +180,51 @@ def shrink(src_file: str, dst_file: str, event_limit: int) -> None:
 
 # ─── mutate: 差分を加えた new DBの作成 ────────────────────────────────────────
 
+# 1大会（events 1件）を追加したときに生成する子レコードの規模。
+# 実際の更新（大会が増えれば試合・エンド・ショット・ストーンも増える）を
+# 模すための定数。値を変えればテストの規模を調整できる。
+ENDS_PER_GAME = 10          # 1試合あたりのエンド数
+SHOTS_PER_END = 16         # 1エンドあたりのショット数（4人×2投×赤黄）
+STONES_PER_SHOT = 2        # 1ショットあたりのストーン配置数（適当）
+
+
+def _insert_row(conn: sqlite3.Connection, table: str, values: dict[str, object]) -> int:
+    """テーブルに1行INSERTし、採番された rowid を返す。
+
+    実在するカラムだけをINSERT対象にする（スキーマ差異への保険）。
+    INTEGER PRIMARY KEY を持つテーブルでは lastrowid が主キー id になる。
+
+    Args:
+        conn: SQLite接続オブジェクト
+        table: INSERT先テーブル名
+        values: カラム名→値の辞書（存在しないカラムは無視される）
+
+    Returns:
+        int: INSERTした行の rowid（= id）
+    """
+    validate_identifier(table)
+    cols = get_columns(conn, table)
+    # values のうち、実際に存在するカラムだけINSERTする
+    use_cols = [c for c in cols if c in values]
+    placeholders = ", ".join("?" for _ in use_cols)
+    col_list = ", ".join(use_cols)
+    cursor = conn.execute(
+        f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})",  # noqa: S608
+        tuple(values[c] for c in use_cols),
+    )
+    # lastrowid は直前のINSERTで採番された rowid
+    return cursor.lastrowid
+
 
 def add_events(conn: sqlite3.Connection, count: int) -> None:
-    """ダミーの大会（events行）を追加する。
+    """ダミーの大会を、関連する試合・エンド・ショット・ストーンごと追加する。
+
+    1大会につき以下を生成し、現実の更新（大会追加に伴う子レコード増加）を模す:
+      - events  1件
+      - games   1件（その大会の試合）
+      - ends    ENDS_PER_GAME 件（1試合のエンド）
+      - shots   各エンド SHOTS_PER_END 件
+      - stones  各ショット STONES_PER_SHOT 件
 
     新規大会名は notify_update.py の added_names 検出で拾われる。
 
@@ -193,63 +235,103 @@ def add_events(conn: sqlite3.Connection, count: int) -> None:
     Returns:
         None
     """
-    cols = get_columns(conn, "events")
+    existing = set(get_tables(conn))
+    totals = {"games": 0, "ends": 0, "shots": 0, "stones": 0}
+
     for i in range(count):
-        # name 以外は最低限の値で埋める。テスト用なので内容は何でもよい。
-        name = f"テストカップ{i + 1}"
-        # events のカラム構成（id, name, year, category）に合わせて値を作る。
-        # id は省略すると自動採番される想定だが、明示せず name/year/category だけ入れる。
-        values: dict[str, object] = {"name": name, "year": 2026, "category": "test"}
-        # 実際に存在するカラムだけINSERT対象にする（スキーマ差異への保険）
-        use_cols = [c for c in cols if c in values]
-        placeholders = ", ".join("?" for _ in use_cols)
-        col_list = ", ".join(use_cols)
-        conn.execute(
-            f"INSERT INTO events ({col_list}) VALUES ({placeholders})",  # noqa: S608
-            tuple(values[c] for c in use_cols),
+        # ── events（大会） ────────────────────────────────────────
+        event_id = _insert_row(
+            conn, "events",
+            {"name": f"テストカップ{i + 1}", "year": 2026, "category": "test"},
         )
+
+        # 子テーブルが無いDBもありうるので、存在チェックしながら下位を作る
+        if "games" not in existing:
+            continue
+
+        # ── games（試合） ────────────────────────────────────────
+        game_id = _insert_row(
+            conn, "games",
+            {
+                "event_id": event_id,
+                "page": 1,
+                "team_red": "テスト赤",
+                "team_yellow": "テスト黄",
+                "final_score_red": 5,
+                "final_score_yellow": 4,
+            },
+        )
+        totals["games"] += 1
+
+        if "ends" not in existing:
+            continue
+
+        # ── ends（エンド） ───────────────────────────────────────
+        for end_no in range(1, ENDS_PER_GAME + 1):
+            end_id = _insert_row(
+                conn, "ends",
+                {
+                    "game_id": game_id,
+                    "page": 1,
+                    "number": end_no,
+                    "color_hammer": "red",
+                    "score_red": 1,
+                    "score_yellow": 0,
+                    # md DB にしか無いカラム。_insert_row が存在判定するので
+                    # four DB では自動的に無視される
+                    "is_power_play": 0,
+                },
+            )
+            totals["ends"] += 1
+
+            if "shots" not in existing:
+                continue
+
+            # ── shots（ショット） ────────────────────────────────
+            for shot_no in range(1, SHOTS_PER_END + 1):
+                # 赤黄交互に割り当てる
+                color = "red" if shot_no % 2 == 1 else "yellow"
+                shot_id = _insert_row(
+                    conn, "shots",
+                    {
+                        "end_id": end_id,
+                        "number": shot_no,
+                        "color": color,
+                        "team": "テスト赤" if color == "red" else "テスト黄",
+                        "player_name": f"テスト選手{shot_no}",
+                        "type": "draw",
+                        "turn": "in",
+                        "percent_score": 100,
+                    },
+                )
+                totals["shots"] += 1
+
+                if "stones" not in existing:
+                    continue
+
+                # ── stones（ストーン配置） ───────────────────────
+                for stone_no in range(1, STONES_PER_SHOT + 1):
+                    _insert_row(
+                        conn, "stones",
+                        {
+                            "shot_id": shot_id,
+                            "color": color,
+                            "x": 0,
+                            "y": 0,
+                            "distance_from_center": 100,
+                            "inhouse": 1,
+                            "insheet": 1,
+                            # normal(four) DB にしか無いカラム。存在しなければ無視
+                            "shot_order": stone_no,
+                        },
+                    )
+                    totals["stones"] += 1
+
     print(f"  events に {count} 件のダミー大会を追加")
-
-
-def add_players(conn: sqlite3.Connection, count: int) -> None:
-    """ダミーのショット（shots行）を追加し、新規プレイヤー名を発生させる。
-
-    shots.player_name の新規値は notify_update.py の new_players 検出で拾われる。
-    外部キー（end_id）には既存の end をひとつ流用する。
-
-    Args:
-        conn: SQLite接続オブジェクト
-        count: 追加するショット数（= 新規プレイヤー数）
-
-    Returns:
-        None
-    """
-    cols = get_columns(conn, "shots")
-    # 既存の end をひとつ取得してFKに使う（無ければ何もしない）
-    row = conn.execute("SELECT id FROM ends LIMIT 1").fetchone()
-    if row is None:
-        print("  ends が空のため shots 追加をスキップ")
-        return
-    end_id = row[0]
-    for i in range(count):
-        values: dict[str, object] = {
-            "end_id": end_id,
-            "number": 1,
-            "color": "red",
-            "team": "テストチーム",
-            "player_name": f"テスト選手{i + 1}",
-            "type": "draw",
-            "turn": "in",
-            "percent_score": 100,
-        }
-        use_cols = [c for c in cols if c in values]
-        placeholders = ", ".join("?" for _ in use_cols)
-        col_list = ", ".join(use_cols)
-        conn.execute(
-            f"INSERT INTO shots ({col_list}) VALUES ({placeholders})",  # noqa: S608
-            tuple(values[c] for c in use_cols),
-        )
-    print(f"  shots に {count} 件のダミーショット（新規プレイヤー）を追加")
+    print(
+        f"    └ 連動追加: games {totals['games']} / ends {totals['ends']} "
+        f"/ shots {totals['shots']} / stones {totals['stones']} 件"
+    )
 
 
 def add_column(conn: sqlite3.Connection, spec: str) -> None:
@@ -321,8 +403,6 @@ def mutate(args: argparse.Namespace) -> None:
                 add_column(conn, spec)
         if args.add_events:
             add_events(conn, args.add_events)
-        if args.add_players:
-            add_players(conn, args.add_players)
         conn.commit()
     finally:
         conn.close()
@@ -382,11 +462,7 @@ def main() -> None:
     p_mutate.add_argument("dst_file", help="出力する new DBのパス")
     p_mutate.add_argument(
         "--add-events", type=int, default=0,
-        help="追加するダミー大会の件数",
-    )
-    p_mutate.add_argument(
-        "--add-players", type=int, default=0,
-        help="追加するダミーショット（新規プレイヤー）の件数",
+        help="追加するダミー大会の件数（試合・エンド・ショット・ストーンも連動して追加）",
     )
     p_mutate.add_argument(
         "--add-column", action="append", default=[], metavar="TABLE:COLUMN",

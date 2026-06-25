@@ -127,24 +127,6 @@ def get_event_names(conn: sqlite3.Connection) -> set[str]:
         return set()
 
 
-def get_player_names(conn: sqlite3.Connection) -> set[str]:
-    """shotsテーブルのプレイヤー名をすべて取得する。
-
-    Args:
-        conn: SQLite接続オブジェクト
-
-    Returns:
-        set[str]: プレイヤー名の集合（NULLは除外）
-    """
-    try:
-        cursor = conn.execute(
-            "SELECT DISTINCT player_name FROM shots WHERE player_name IS NOT NULL"
-        )
-        return {row[0] for row in cursor.fetchall()}
-    except sqlite3.OperationalError:
-        return set()
-
-
 # ─── 差分検出 ─────────────────────────────────────────────────────────────────
 
 
@@ -152,7 +134,7 @@ def detect_diff(prev_file: str, new_file: str, target: str) -> dict:
     """旧SQLiteと新SQLiteのスキーマ差分・データ差分を検出する。
 
     テーブルの追加/削除、カラムの追加/削除、各テーブルの行数変化、
-    新規大会名、新規プレイヤー名を検出してまとめる。
+    新規大会名を検出してまとめる。
 
     Args:
         prev_file: 旧SQLiteファイルのパス
@@ -211,16 +193,11 @@ def detect_diff(prev_file: str, new_file: str, target: str) -> dict:
             entry: dict = {"before": before, "after": after, "diff": after - before}
 
             # eventsテーブルの新規追加大会名を列挙
+            # 「どの大会が増えたか」は通知の主役になる定性情報なので必ず拾う
             if table == "events" and prev_exists and new_exists:
                 prev_names = get_event_names(prev_conn)
                 new_names = get_event_names(new_conn)
                 entry["added_names"] = sorted(new_names - prev_names)
-
-            # shotsテーブルの新規プレイヤー名を列挙
-            if table == "shots" and prev_exists and new_exists:
-                prev_players = get_player_names(prev_conn)
-                new_players = get_player_names(new_conn)
-                entry["new_players"] = sorted(new_players - prev_players)
 
             data_changes[table] = entry
 
@@ -299,11 +276,17 @@ def build_prompt(diff: dict) -> str:
 以下はカーリング試合データベース（{target_label}）の更新差分情報です。
 これを研究室メンバー向けに簡潔でわかりやすい日本語の通知文に変換してください。
 
-要件:
+この通知で読み手が知りたいのは「何が新しく増えたか・構造がどう変わったか」という
+定性的な事実です。具体的な件数は元データ（PDF）を見れば分かるため主役ではありません。
+
+要件（重要度の高い順）:
 - 冒頭に「【CurlingDB更新通知】{target_label}」というタイトルを入れる
-- スキーマ変更（テーブル・カラムの追加/削除）があった場合は必ず明記する
-- 追加された大会名は具体的に列挙する
-- データ件数の変化を簡潔に伝える
+- 【最優先】追加された大会名（added_names）があれば、必ず具体的に列挙する
+- 【最優先】スキーマ変更（テーブル・カラムの追加/削除）があれば必ず明記する。
+  特にカラム追加は「どのテーブルに何というカラムが増えたか」を具体的に書く
+- データ件数の増減は「補足」として軽く触れる程度に留める（数字の羅列にしない）。
+  目安として「○試合分のデータが追加されました」のように規模感が伝われば十分
+- 追加要素が無い項目（added_names が空、スキーマ変更なし等）はわざわざ言及しない
 - 全体で200文字以内に収める
 
 差分情報:
