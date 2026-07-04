@@ -44,7 +44,7 @@
 | `sort` | `id` | ソート対象カラム |
 | `order` | `asc` | ソート方向（`asc` / `desc`） |
 
-テーブルごとのフィルタパラメータや詳細なレスポンス形式は [API ドキュメント](https://szmrki.github.io/rb2db-api/) を参照してください。
+テーブルごとのフィルタパラメータや詳細なレスポンス形式は [API ドキュメント](https://szmrki.github.io/ResultsBook2DB-API/) を参照してください。
 
 > API 本体は研究室内限定公開です。ドキュメントはスキーマ定義のみを公開しています。
 
