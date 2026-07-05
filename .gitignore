@@ -12,4 +12,4 @@ __pycache__
 *.log
 logs/
 memo/
-CLAUDE.md
+CLAUDE.local.md
