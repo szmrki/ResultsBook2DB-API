@@ -3,7 +3,7 @@
   "info": {
     "title": "ResultsBook2DB API",
     "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n> API 本体は研究室内限定公開です。\n",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "paths": {
     "/v1/four/events": {
@@ -894,7 +894,7 @@
           "four / shots"
         ],
         "summary": "List Shots",
-        "description": "ショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    end_id: エンドIDで絞り込み（省略可）\n    number: ショット番号で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    type: ショットタイプで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト",
+        "description": "ショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。shots→ends→games を辿って絞る）\n    category: 大会カテゴリで絞り込み（例: \"Men\" / \"Women\"、省略可。\n        shots→ends→games→events を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可）\n    number: ショット番号で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    type: ショットタイプで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト",
         "operationId": "list_shots_v1_four_shots_get",
         "parameters": [
           {
@@ -936,6 +936,38 @@
             "schema": {
               "$ref": "#/components/schemas/OrderDirection",
               "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
             }
           },
           {
@@ -1208,7 +1240,7 @@
           "four / stones"
         ],
         "summary": "List Stones",
-        "description": "ストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    shot_id: 投球IDで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）\n    shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト",
+        "description": "ストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。stones→shots→ends→games を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。stones→shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可。stones→shots を辿って絞る）\n    shot_id: 投球IDで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）\n    shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト",
         "operationId": "list_stones_v1_four_stones_get",
         "parameters": [
           {
@@ -1250,6 +1282,54 @@
             "schema": {
               "$ref": "#/components/schemas/OrderDirection",
               "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "game_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "end_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Id"
             }
           },
           {
@@ -2438,7 +2518,7 @@
           "md / shots"
         ],
         "summary": "List Shots",
-        "description": "ショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    end_id: エンドIDで絞り込み（省略可）\n    number: ショット番号で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    type: ショットタイプで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト",
+        "description": "ショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。shots→ends→games を辿って絞る）\n    category: 大会カテゴリで絞り込み（例: \"Men\" / \"Women\"、省略可。\n        shots→ends→games→events を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可）\n    number: ショット番号で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    type: ショットタイプで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト",
         "operationId": "list_shots_v1_md_shots_get",
         "parameters": [
           {
@@ -2480,6 +2560,38 @@
             "schema": {
               "$ref": "#/components/schemas/OrderDirection",
               "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
             }
           },
           {
@@ -2752,7 +2864,7 @@
           "md / stones"
         ],
         "summary": "List Stones",
-        "description": "ストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    shot_id: 投球IDで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）\n    shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト",
+        "description": "ストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜1000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。stones→shots→ends→games を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。stones→shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可。stones→shots を辿って絞る）\n    shot_id: 投球IDで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）\n    shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト",
         "operationId": "list_stones_v1_md_stones_get",
         "parameters": [
           {
@@ -2794,6 +2906,54 @@
             "schema": {
               "$ref": "#/components/schemas/OrderDirection",
               "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "game_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "end_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Id"
             }
           },
           {
