@@ -8,7 +8,7 @@ from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from app.models import End, Shot, Stone
+from app.models import End, Event, Game, Shot, Stone
 from app.schemas import (
     ListResponse,
     OrderDirection,
@@ -46,6 +46,8 @@ def create_router(
         offset: int = Query(default=0, ge=0),
         sort: ShotSortField = ShotSortField.id,
         order: OrderDirection = OrderDirection.asc,
+        event_id: int | None = None,
+        category: str | None = None,
         game_id: int | None = None,
         end_id: int | None = None,
         number: int | None = None,
@@ -63,6 +65,10 @@ def create_router(
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
+            event_id: 大会IDで絞り込み（省略可。shots→ends→games を辿って絞る）
+            category: 大会カテゴリで絞り込み（例: "Men" / "Women"、省略可。
+                shots→ends→games→events を辿って絞る）
+            game_id: 試合IDで絞り込み（省略可。shots→ends を辿って絞る）
             end_id: エンドIDで絞り込み（省略可）
             number: ショット番号で絞り込み（省略可）
             player_name: 選手名の部分一致で絞り込み（省略可）
@@ -75,8 +81,22 @@ def create_router(
         """
         query = db.query(Shot)
 
+        # event_id / category / game_id はいずれも End を経由するため、
+        # どれか1つでも指定されたら End を1回だけ JOIN する（重複 JOIN を防ぐ）。
+        if event_id is not None or category is not None or game_id is not None:
+            query = query.join(End, Shot.end_id == End.id)
+        # event_id / category はさらに Game を経由する。
+        if event_id is not None or category is not None:
+            query = query.join(Game, End.game_id == Game.id)
+        # category は最上位の Event まで辿る。
+        if category is not None:
+            query = query.join(Event, Game.event_id == Event.id).filter(
+                Event.category == category
+            )
+        if event_id is not None:
+            query = query.filter(Game.event_id == event_id)
         if game_id is not None:
-            query = query.join(End).filter(End.game_id == game_id)
+            query = query.filter(End.game_id == game_id)
         if end_id is not None:
             query = query.filter(Shot.end_id == end_id)
         if number is not None:
