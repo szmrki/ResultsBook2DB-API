@@ -8,7 +8,7 @@ from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from app.models import Stone
+from app.models import End, Game, Shot, Stone
 from app.schemas import (
     ListResponse,
     OrderDirection,
@@ -43,6 +43,9 @@ def create_router(
         offset: int = Query(default=0, ge=0),
         sort: StoneSortField = StoneSortField.id,
         order: OrderDirection = OrderDirection.asc,
+        event_id: int | None = None,
+        game_id: int | None = None,
+        end_id: int | None = None,
         shot_id: int | None = None,
         color: StoneColor | None = None,
         inhouse: int | None = None,
@@ -57,6 +60,9 @@ def create_router(
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
+            event_id: 大会IDで絞り込み（省略可。stones→shots→ends→games を辿って絞る）
+            game_id: 試合IDで絞り込み（省略可。stones→shots→ends を辿って絞る）
+            end_id: エンドIDで絞り込み（省略可。stones→shots を辿って絞る）
             shot_id: 投球IDで絞り込み（省略可）
             color: ストーン色で絞り込み（"red" / "yellow"、省略可）
             inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）
@@ -68,6 +74,22 @@ def create_router(
         """
         query = db.query(Stone)
 
+        # event_id / game_id / end_id はいずれも Shot を経由するため、
+        # どれか1つでも指定されたら Shot を1回だけ JOIN する（重複 JOIN を防ぐ）。
+        if event_id is not None or game_id is not None or end_id is not None:
+            query = query.join(Shot, Stone.shot_id == Shot.id)
+        # event_id / game_id はさらに End を経由する。
+        if event_id is not None or game_id is not None:
+            query = query.join(End, Shot.end_id == End.id)
+        # event_id は最上位に近い Game まで辿る。
+        if event_id is not None:
+            query = query.join(Game, End.game_id == Game.id).filter(
+                Game.event_id == event_id
+            )
+        if game_id is not None:
+            query = query.filter(End.game_id == game_id)
+        if end_id is not None:
+            query = query.filter(Shot.end_id == end_id)
         if shot_id is not None:
             query = query.filter(Stone.shot_id == shot_id)
         if color is not None:
