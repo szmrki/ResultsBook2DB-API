@@ -3,12 +3,13 @@
 from collections.abc import Callable, Generator
 from typing import Union, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from app.models import End, Game, Shot
+from app.pagination import limit_query, offset_query
 from app.schemas import (
     EndFourResponse,
     EndMdResponse,
@@ -44,8 +45,8 @@ def create_router(
     @limiter.limit(rate_limit)
     def list_ends(
         request: Request,  # noqa: ARG001
-        limit: int = Query(default=50, ge=1, le=1000),
-        offset: int = Query(default=0, ge=0),
+        limit: int = limit_query(),
+        offset: int = offset_query(),
         sort: EndSortField = EndSortField.id,
         order: OrderDirection = OrderDirection.asc,
         event_id: int | None = None,
@@ -59,7 +60,7 @@ def create_router(
 
         Args:
             request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
-            limit: 取得件数の上限（1〜1000）
+            limit: 取得件数の上限（1〜100000）
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
@@ -123,8 +124,8 @@ def create_router(
     def list_end_shots(
         request: Request,  # noqa: ARG001
         end_id: int,
-        limit: int = Query(default=50, ge=1, le=1000),
-        offset: int = Query(default=0, ge=0),
+        limit: int = limit_query(),
+        offset: int = offset_query(),
         sort: ShotSortField = ShotSortField.id,
         order: OrderDirection = OrderDirection.asc,
         db: Session = Depends(get_db),
@@ -134,7 +135,7 @@ def create_router(
         Args:
             request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
             end_id: エンド ID
-            limit: 取得件数の上限（1〜1000）
+            limit: 取得件数の上限（1〜100000）
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
