@@ -34,6 +34,12 @@ from sqlalchemy.pool import StaticPool
 os.environ["DATABASE_URL_MD"] = "sqlite:///:memory:"
 os.environ["DATABASE_URL_FOUR"] = "sqlite:///:memory:"
 
+# MCP サーバー（app/mcp）は import 時に read-only 接続URLを要求する。
+# テストでは実接続しない純粋ロジック（sql_guard / _to_jsonable）のみ検証するため、
+# import を通すためのダミーとして SQLite を指定しておく。
+os.environ["DATABASE_URL_MD_RO"] = "sqlite:///:memory:"
+os.environ["DATABASE_URL_FOUR_RO"] = "sqlite:///:memory:"
+
 # ─── ② app と DB 関連クラスを import ────────────────────────────────────────
 # ここで初めて app を import する。
 # この時点で app/database.py の engine_md / engine_four は SQLite で作られる。
