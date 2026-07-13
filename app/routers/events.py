@@ -3,12 +3,13 @@
 from collections.abc import Callable, Generator
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from app.models import Event, Game
+from app.pagination import limit_query, offset_query
 from app.schemas import (
     EventResponse,
     EventSortField,
@@ -41,12 +42,9 @@ def create_router(
     # request は slowapi がIPアドレスを取得するために必要（クエリパラメータにはならない）
     def list_events(
         request: Request,  # noqa: ARG001
-        # Query() でデフォルト値に加えて範囲制限を設定する
-        # ge=1: 1以上（ge = greater than or equal）
-        # le=1000: 1000以下（le = less than or equal）
-        # ge=0: 0以上
-        limit: int = Query(default=50, ge=1, le=1000),
-        offset: int = Query(default=0, ge=0),
+        # limit / offset のデフォルト値・範囲制限は app/pagination.py に集約している
+        limit: int = limit_query(),
+        offset: int = offset_query(),
         sort: EventSortField = EventSortField.id,
         order: OrderDirection = OrderDirection.asc,
         name: str | None = None,
@@ -60,7 +58,7 @@ def create_router(
 
         Args:
             request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
-            limit: 取得件数の上限（1〜1000）
+            limit: 取得件数の上限（1〜100000）
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
@@ -123,8 +121,8 @@ def create_router(
     def list_event_games(
         request: Request,  # noqa: ARG001
         event_id: int,
-        limit: int = Query(default=50, ge=1, le=1000),
-        offset: int = Query(default=0, ge=0),
+        limit: int = limit_query(),
+        offset: int = offset_query(),
         sort: GameSortField = GameSortField.id,
         order: OrderDirection = OrderDirection.asc,
         db: Session = Depends(get_db),
@@ -134,7 +132,7 @@ def create_router(
         Args:
             request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
             event_id: 大会 ID（URL パスから自動取得）
-            limit: 取得件数の上限（1〜1000）
+            limit: 取得件数の上限（1〜100000）
             offset: 取得開始位置（0以上）
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
