@@ -9,6 +9,7 @@ __pycache__
 *.dump
 *.sql
 !docker/init.sql
+!docker/setup_readonly_role.sql
 *.log
 logs/
 memo/

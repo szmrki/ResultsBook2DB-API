@@ -65,6 +65,16 @@ class JSONFormatter(logging.Formatter):
         if hasattr(record, "status_code"):
             log_obj["status_code"] = record.status_code
 
+        # MCP サーバー（app/mcp）の run_query クエリログ用フィールド
+        if hasattr(record, "db"):
+            log_obj["db"] = record.db
+        if hasattr(record, "sql"):
+            log_obj["sql"] = record.sql
+        if hasattr(record, "row_count"):
+            log_obj["row_count"] = record.row_count
+        if hasattr(record, "truncated"):
+            log_obj["truncated"] = record.truncated
+
         return json.dumps(log_obj, ensure_ascii=False)
 
 

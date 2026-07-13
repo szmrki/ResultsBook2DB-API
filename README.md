@@ -48,6 +48,34 @@
 
 > API 本体は研究室内限定公開です。ドキュメントはスキーマ定義のみを公開しています。
 
+## MCP サーバー（研究室メンバー向け）
+
+REST API に加えて、AIコーディングツール（Claude Code / Claude Desktop 等）から
+**常に最新のDBに read-only SQL で直接問い合わせる** ための MCP サーバーを提供しています。
+ページネーションの多重往復を避け、集計・結合を伴う探索的分析に向いています。
+
+| 部品 | 対象 | 用途 |
+|---|---|---|
+| REST API | 人間・フロントエンド | 1行〜1ページずつの取得、Swagger UI での確認 |
+| MCP サーバー | メンバーのAIツール | SQL による探索的分析・集計 |
+
+提供するツール:
+
+- `run_query(sql, db)` — 任意の read-only SQL を実行（`SELECT` / `WITH` のみ）
+- `get_schema(db)` — テーブル定義・カラムの意味・md/four 差分を取得
+
+スキーマ解説・SQL上の注意点・定義済みメトリクスの定義は MCP リソースとして同梱しています。
+書き込みは read-only 専用ロールで DB レベルに防止し、返却行数・クエリ時間にも上限を設けています。
+
+接続（既存 API と同じ SSH トンネル方式）:
+
+```bash
+ssh -L 8100:localhost:8100 <lab-ssh-host>
+claude mcp add --transport http rb2db http://localhost:8100/mcp
+```
+
+> MCP サーバーも API 本体と同じく研究室内限定公開です。DB 認証情報はサーバー内に閉じ、メンバーには配布しません。
+
 ## 使用例
 
 以下の例では `BASE_URL` をサーバーのアドレスに置き換えてください。
