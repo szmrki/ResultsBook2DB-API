@@ -48,56 +48,26 @@
 
 > API 本体は研究室内限定公開です。ドキュメントはスキーマ定義のみを公開しています。
 
-## 使用例
+## MCP サーバー
 
-以下の例では `BASE_URL` をサーバーのアドレスに置き換えてください。
+REST API に加えて、AIコーディングツール（Claude Code 等）から
+**最新のDBに read-only SQL で直接問い合わせる** ための MCP サーバーを提供しています。
+ページネーションの多重往復を避け、集計・結合を伴う探索的分析に向いています。
 
-### 大会一覧を取得する
+| 部品 | 対象 | 用途 |
+|---|---|---|
+| REST API | 人間・フロントエンド | 1行〜1ページずつの取得、Swagger UI での確認 |
+| MCP サーバー | メンバーのAIツール | SQL による探索的分析・集計 |
 
-```bash
-curl "$BASE_URL/v1/four/events"
-```
+提供するツール:
 
-### 特定の大会の試合一覧を取得する
+- `run_query(sql, db)` — 任意の read-only SQL を実行（`SELECT` / `WITH` のみ）
+- `get_schema(db)` — テーブル定義・カラムの意味・md/four 差分を取得
 
-```bash
-# 大会名・年で絞り込んで ID を確認する
-curl "$BASE_URL/v1/four/events?name=WMDCC&year=2024"
+スキーマ解説・SQL上の注意点・定義済みメトリクスの定義は MCP リソースとして同梱しています。
+書き込みは read-only 専用ロールで DB レベルに防止し、返却行数・クエリ時間にも上限を設けています。
 
-# その ID の試合一覧を取得する
-curl "$BASE_URL/v1/four/events/1/games"
-```
-
-### ページネーションとソートを使う
-
-```bash
-# 新しい順に10件取得する（2件目から）
-curl "$BASE_URL/v1/four/games?limit=10&offset=0&sort=id&order=desc"
-```
-
-### 特定の試合のエンドデータを取得する
-
-```bash
-# game_id=1 の試合の全エンドを取得する
-curl "$BASE_URL/v1/four/ends?game_id=1"
-```
-
-### ストーン座標データを取得する
-
-```bash
-# shot_id=1 の投球後のストーン座標を取得する
-curl "$BASE_URL/v1/four/shots/1/stones"
-```
-
-### ミックスダブルス（md）のデータを取得する
-
-```bash
-# md DB の大会一覧（four を md に変えるだけ）
-curl "$BASE_URL/v1/md/events"
-
-# パワープレイが使われたエンドを絞り込む（md のみ）
-curl "$BASE_URL/v1/md/ends?is_power_play=1"
-```
+> MCP サーバー本体も研究室内限定公開です。
 
 ## 技術スタック
 

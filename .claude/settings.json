@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__rb2db-local__run_query",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c '{systemMessage: (\"\n実行SQL (\" + (.tool_input.db // \"?\") + \"):\\n\" + (.tool_input.sql // \"(なし)\"))}' 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

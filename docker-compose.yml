@@ -25,6 +25,36 @@ services:
     # コード変更を自動検知して再起動（開発時のみ）
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # ── MCP サーバー ──────────────────────────────────────────────
+  # 研究室メンバーの AI ツールから read-only SQL で分析するためのサーバー。
+  # api と同一イメージ（同じ Dockerfile）を使い、command だけ差し替えて起動する。
+  mcp:
+    build: . # api と同じ Dockerfile / イメージ
+    container_name: rb2db-mcp
+    ports:
+      - "127.0.0.1:8100:8100"
+        # api と同様、研究室サーバーの localhost のみ公開。
+        # 各メンバーは SSH ポートフォワーディング経由で接続する。
+    environment:
+      # MCP サーバーは read-only 専用ロールで接続する（書き込み可能なURLは渡さない）。
+      DATABASE_URL_MD_RO: ${DATABASE_URL_MD_RO}
+      DATABASE_URL_FOUR_RO: ${DATABASE_URL_FOUR_RO}
+      # コンテナ内では 0.0.0.0 で待ち受け、ホスト側公開を 127.0.0.1 に限定する。
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8100
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+        # 開発時にコード変更を即反映（api と同様）
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: uv run python -m app.mcp.server
+
   # ── PostgreSQL ────────────────────────────────────────────────
   db:
     image: postgres:18 # DockerHub の公式 PostgreSQL 18 イメージを使用

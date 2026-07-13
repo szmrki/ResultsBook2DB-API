@@ -1,0 +1,118 @@
+# rb2db スキーマ解説
+
+カーリング国際公式大会の実試合データ。2系統のDBがある。
+
+- `md`   : ミックスダブルス（2人制）
+- `four` : 4人制（Men / Women / Junior Men / Junior Women）
+
+両DBは同一の6テーブル構成。リレーションは以下（すべて `ON DELETE CASCADE`）。
+
+```
+events  →  games  →  ends  →  shots  →  stones
+                  ↑
+                lsds（game 単位）
+```
+
+- `events`（大会）→ `games`（試合）→ `ends`（エンド）→ `shots`（投球）→ `stones`（ストーン座標）
+- `lsds`（Last Stone Draw）は `games` 配下
+
+---
+
+## events テーブル（大会・最上位）
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | 大会ID（PK） |
+| name | STRING | 大会コード（例: WMDCC2023）、UNIQUE |
+| year | INTEGER | 開催年 |
+| category | STRING | カテゴリ（MD / Men / Women / Junior Men / Junior Women） |
+
+## games テーブル（試合）
+
+`team_red` / `team_yellow` はストーンの色に対応する。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | 試合ID（PK） |
+| event_id | INTEGER | 所属大会ID（FK → events.id） |
+| page | INTEGER | ソース元スコアシートのページ番号 |
+| team_red | STRING | レッド側チーム名（例: JPN - Japan） |
+| team_yellow | STRING | イエロー側チーム名 |
+| final_score_red | INTEGER | レッド側最終スコア |
+| final_score_yellow | INTEGER | イエロー側最終スコア |
+
+## ends テーブル（エンド）
+
+通常1試合8〜10エンド。延長は既存データで最大12エンド。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | エンドID（PK） |
+| game_id | INTEGER | 所属試合ID（FK → games.id） |
+| page | INTEGER | ソース元ページ番号 |
+| number | INTEGER | エンド番号（1〜12） |
+| color_hammer | STRING | ハンマー保持チームのストーン色（red / yellow） |
+| score_red | INTEGER | そのエンドのレッド得点 |
+| score_yellow | INTEGER | そのエンドのイエロー得点 |
+| is_power_play | INTEGER | パワープレイフラグ 1=ON, 0=OFF（**md のみ。four では NULL**） |
+
+## shots テーブル（投球）
+
+1エンドにつき最大16投。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | 投球ID（PK） |
+| end_id | INTEGER | 所属エンドID（FK → ends.id） |
+| number | INTEGER | 投球番号（1〜16） |
+| color | STRING | 投球チームのストーン色（red / yellow） |
+| team | STRING | チーム名（略称） |
+| player_name | STRING | 投球選手名（NULL あり） |
+| type | STRING | ショットタイプ（下記。NULL あり） |
+| turn | STRING | ターン方向（cw=時計回り / ccw=反時計回り） |
+| percent_score | INTEGER | 成功率スコア（0/25/50/75/100 の離散値） |
+
+ショットタイプ: Draw / Guard / Take-out / Double Take-out / Hit and Roll / Raise /
+Promotion Take-out / Freeze / Clearing / Wick / Soft Peeling / Through / Front /
+no statistics / not played
+
+## stones テーブル（ストーン座標）
+
+各投球後のシート上に残る全ストーンの座標。1投球につき最大16レコード。
+座標系は DigitalCurling3 のメートル座標系（詳細は rb2db://sql-notes の「座標系」を参照）。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | ストーンID（PK） |
+| shot_id | INTEGER | 対応投球ID（FK → shots.id） |
+| color | STRING | ストーンの色（red / yellow） |
+| x | FLOAT | 横方向座標（約 -2.24〜+2.26 m） |
+| y | FLOAT | 縦方向座標（約 31.97〜40.51 m） |
+| distance_from_center | FLOAT | ハウス中心からの距離（メートル） |
+| inhouse | INTEGER | ハウス内フラグ（1=内, 0=外） |
+| insheet | INTEGER | シート内フラグ（1=内, 0=外） |
+| shot_order | INTEGER | そのストーンが何投目由来か　|
+
+## lsds テーブル（Last Stone Draw）
+
+試合前のハンマー権決定投球。ティーへの最接近距離を記録。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | LSD ID（PK） |
+| game_id | INTEGER | 対応試合ID（FK → games.id） |
+| team | STRING | チーム名 |
+| player_name | STRING | 投球選手名（↻ 記号でターン方向を表す場合あり） |
+| distance_cm | FLOAT | ティーからの距離（cm、範囲 0.1〜199.6） |
+
+---
+
+## md / four の差異まとめ
+
+| 項目 | md | four |
+|---|---|---|
+| カテゴリ | MD のみ | Men / Women / Junior Men / Junior Women |
+| ends.is_power_play | あり | NULL |
+| stones.shot_order | あり | あり |
+| shots データ充実度 | 大会により NULL 多し | ほぼ全投球に type・選手名あり |
+| 収録規模 | 13大会 / 1,419試合 / 座標約41.8万行 | 42大会 / 2,241試合 / 座標約115万行 |
