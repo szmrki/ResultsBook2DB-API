@@ -21,6 +21,56 @@ from app.schemas import (
     StoneSortField,
 )
 
+# percent_score が取りうる5段階の固定値。これ以外は不正値として弾く。
+ALLOWED_PERCENT_SCORES = frozenset({0, 25, 50, 75, 100})
+
+
+def _parse_percent_scores(raw: str) -> list[int]:
+    """percent_score のカンマ区切り文字列を整数リストにパースして検証する。
+
+    例: "75,100" → [75, 100]。分析用途で「成功ショットのみ」のような
+    複数値フィルタを1リクエストで表現できるようにする。
+
+    Args:
+        raw: クエリで渡されたカンマ区切り文字列（例: "75,100"）。
+
+    Returns:
+        パース済みの整数リスト（重複は除去せずそのまま IN に渡す）。
+
+    Raises:
+        HTTPException: 整数に変換できない、または 5段階（0/25/50/75/100）
+            以外の値が含まれる場合に 422 を返す。
+    """
+    scores: list[int] = []
+    for part in raw.split(","):
+        token = part.strip()
+        if token == "":
+            # 空要素（例: "75," や ",,"）は不正入力として扱う。
+            continue
+        try:
+            value = int(token)
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=f"percent_score は整数で指定してください（不正な値: {token!r}）",
+            ) from None
+        if value not in ALLOWED_PERCENT_SCORES:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "percent_score は 0 / 25 / 50 / 75 / 100 のいずれかです"
+                    f"（不正な値: {value}）"
+                ),
+            )
+        scores.append(value)
+    if not scores:
+        # カンマだけ・空文字など、有効値が1つもない場合も不正入力とする。
+        raise HTTPException(
+            status_code=422,
+            detail="percent_score に有効な値が指定されていません",
+        )
+    return scores
+
 
 def create_router(
     get_db: Callable[[], Generator[Session, None, None]],
@@ -56,6 +106,7 @@ def create_router(
         type: str | None = None,
         color: StoneColor | None = None,
         turn: ShotTurn | None = None,
+        percent_score: str | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[ShotResponse]:
         """ショット一覧を取得する。
@@ -75,6 +126,11 @@ def create_router(
             player_name: 選手名の部分一致で絞り込み（省略可）
             type: ショットタイプで絞り込み（省略可）
             color: ストーン色で絞り込み（"red" / "yellow"、省略可）
+            turn: 投球のターン（回転）方向で絞り込み（"cw" / "ccw"、省略可）
+            percent_score: ショット評価スコアで絞り込み（省略可）。
+                カンマ区切りで複数指定できる（例: "75,100" で成功ショットのみ）。
+                percent_score は 0 / 25 / 50 / 75 / 100 の5段階固定値で、
+                それ以外の値を指定すると 422 を返す。
             db: DB セッション（依存性注入）
 
         Returns:
@@ -110,6 +166,11 @@ def create_router(
             query = query.filter(Shot.color == color)
         if turn is not None:
             query = query.filter(Shot.turn == turn)
+        if percent_score is not None:
+            # カンマ区切り文字列（例: "75,100"）を整数リストにパースし、
+            # 許可された5段階値のみを受け付けて IN フィルタで絞る。
+            scores = _parse_percent_scores(percent_score)
+            query = query.filter(Shot.percent_score.in_(scores))
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Shot, sort.value)))

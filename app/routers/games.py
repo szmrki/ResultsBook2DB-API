@@ -5,7 +5,7 @@ from typing import Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
-from sqlalchemy import asc, desc
+from sqlalchemy import and_, asc, desc, or_
 from sqlalchemy.orm import Session
 
 from app.models import End, Game, Lsd
@@ -52,6 +52,8 @@ def create_router(
         order: OrderDirection = OrderDirection.asc,
         event_id: int | None = None,
         team: str | None = None,
+        team_a: str | None = None,
+        team_b: str | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[GameResponse]:
         """試合一覧を取得する。
@@ -63,7 +65,12 @@ def create_router(
             sort: ソート対象カラム名
             order: ソート方向（asc / desc）
             event_id: 大会IDで絞り込み（省略可）
-            team: チーム名の部分一致で絞り込み（省略可）
+            team: チーム名の部分一致で絞り込み（省略可。red / yellow どちらの側でもマッチ）
+            team_a: 対戦カード指定の一方のチーム名（省略可。team_b と両方指定したときのみ機能）
+            team_b: 対戦カード指定のもう一方のチーム名
+                （省略可。team_a と両方指定したときのみ機能）。
+                team_a と team_b を両方指定すると、両チームが対戦した試合を返す
+                （red / yellow の並び順は問わない。いずれも部分一致）
             db: DB セッション（依存性注入）
 
         Returns:
@@ -76,6 +83,21 @@ def create_router(
         if team is not None:
             query = query.filter(
                 (Game.team_red.ilike(f"%{team}%")) | (Game.team_yellow.ilike(f"%{team}%"))
+            )
+        # 対戦カード指定: team_a と team_b が両方揃ったときだけ有効。
+        # どちらが red / yellow かは問わないため、2通りの並びを OR でマッチさせる。
+        if team_a is not None and team_b is not None:
+            query = query.filter(
+                or_(
+                    and_(
+                        Game.team_red.ilike(f"%{team_a}%"),
+                        Game.team_yellow.ilike(f"%{team_b}%"),
+                    ),
+                    and_(
+                        Game.team_red.ilike(f"%{team_b}%"),
+                        Game.team_yellow.ilike(f"%{team_a}%"),
+                    ),
+                )
             )
 
         order_func = asc if order == OrderDirection.asc else desc

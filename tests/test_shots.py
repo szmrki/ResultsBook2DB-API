@@ -215,3 +215,101 @@ def test_list_shots_filter_event_id_and_number(
     body = response.json()
     assert body["total"] == 1
     assert body["data"][0]["number"] == 2
+
+
+# ─── percent_score フィルタ（複数値指定・バリデーション） ──────────────────
+# D-1（issue #11）: percent_score は 0/25/50/75/100 の5段階固定値。
+# カンマ区切りで複数値を指定して IN フィルタで絞れることを確認する。
+
+
+def _make_shots_with_scores(db: Session, scores: list[int]) -> int:
+    """指定した percent_score を持つ shots を1エンド配下に作り、event_id を返す。
+
+    Args:
+        db: テスト用 DB セッション
+        scores: 作成する各 shot の percent_score のリスト
+
+    Returns:
+        作成した大会の event_id（テストで絞り込みの起点に使う）
+    """
+    event = create_event(db, name=f"SCORE_EV_{scores}")
+    game = create_game(db, event_id=event.id)
+    end = create_end(db, game_id=game.id)
+    for i, score in enumerate(scores, start=1):
+        shot = Shot(end_id=end.id, number=i, color="red", percent_score=score)
+        db.add(shot)
+    db.commit()
+    return event.id
+
+
+def test_list_shots_filter_percent_score_multiple(
+    client: TestClient, four_db: Session
+) -> None:
+    """percent_score=75,100 で該当する2値のショットのみ返すことを確認する。
+
+    Args:
+        client: HTTP クライアント
+        four_db: four DB セッション
+    """
+    # Arrange: 5段階すべてを1つずつ作る
+    event_id = _make_shots_with_scores(four_db, [0, 25, 50, 75, 100])
+
+    # Act: 成功ショット（75 と 100）だけを取得
+    response = client.get(f"/v1/four/shots?event_id={event_id}&percent_score=75,100")
+
+    # Assert: 75 と 100 の2件のみ
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert sorted(row["percent_score"] for row in body["data"]) == [75, 100]
+
+
+def test_list_shots_filter_percent_score_single(
+    client: TestClient, four_db: Session
+) -> None:
+    """percent_score=100 の単一値指定でも正しく絞れることを確認する。
+
+    Args:
+        client: HTTP クライアント
+        four_db: four DB セッション
+    """
+    event_id = _make_shots_with_scores(four_db, [0, 50, 100, 100])
+
+    response = client.get(f"/v1/four/shots?event_id={event_id}&percent_score=100")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert all(row["percent_score"] == 100 for row in body["data"])
+
+
+def test_list_shots_filter_percent_score_invalid_value(
+    client: TestClient, four_db: Session
+) -> None:
+    """5段階以外の値（例: 80）を指定すると 422 を返すことを確認する。
+
+    Args:
+        client: HTTP クライアント
+        four_db: four DB セッション
+    """
+    event_id = _make_shots_with_scores(four_db, [100])
+
+    response = client.get(f"/v1/four/shots?event_id={event_id}&percent_score=80")
+
+    assert response.status_code == 422
+
+
+def test_list_shots_filter_percent_score_not_integer(
+    client: TestClient, four_db: Session
+) -> None:
+    """整数に変換できない値を指定すると 422 を返すことを確認する。
+
+    Args:
+        client: HTTP クライアント
+        four_db: four DB セッション
+    """
+    event_id = _make_shots_with_scores(four_db, [100])
+
+    response = client.get(f"/v1/four/shots?event_id={event_id}&percent_score=abc")
+
+    assert response.status_code == 422
