@@ -47,7 +47,11 @@ from google import genai
 load_dotenv()
 
 # 差分検出・件数カウントの対象テーブル（存在しないテーブルはスキップ）
-TARGET_TABLES = ["events", "games", "ends", "shots", "stones", "lsds"]
+# standings / rosters は events 直下の付随テーブル。件数増減のみ検知する
+# （rank 変更や選手入れ替えといった値修正の検出対象にはしていない）。
+TARGET_TABLES = [
+    "events", "games", "ends", "shots", "stones", "lsds", "standings", "rosters",
+]
 
 # ターゲット識別子から通知用の表示名への変換
 TARGET_LABELS: dict[str, str] = {
@@ -647,19 +651,6 @@ def has_any_change(diff: dict) -> bool:
     return False
 
 
-def format_no_change_message(diff: dict) -> str:
-    """変化なし時の定型通知文を生成する（Gemini API を使わない）。
-
-    Args:
-        diff: detect_diff の返り値
-
-    Returns:
-        str: Slack に投稿する通知文字列
-    """
-    target_label = TARGET_LABELS.get(diff["target"], diff["target"])
-    return f"【CurlingDB更新確認】{target_label}\n前回からの変更は検出されませんでした。"
-
-
 def format_initial_message(diff: dict) -> str:
     """初回登録時の定型通知文を生成する（Gemini API を使わない）。
 
@@ -829,16 +820,19 @@ def main() -> None:
         print("\n--no-llm 指定のため、通知文生成・Slack投稿はスキップしました")
         return
 
+    # ── 変化なしなら通知しない ────────────────────────────────────
+    # 初回登録以外で、スキーマ変更・件数増減・追加大会名・値修正のいずれも
+    # 検出されなかった場合は、Slack 通知そのものを行わずに終了する
+    # （同じ内容の再移行で無意味な通知が飛ぶのを防ぐ）。
+    if not diff.get("is_initial") and not has_any_change(diff):
+        print("変化なし: Slack 通知をスキップします")
+        return
+
     # ── 通知文の生成 ──────────────────────────────────────────────
-    # 初回登録は定型文、完全変化なしも定型文、差分更新は Gemini API で自然文を生成する
+    # 初回登録は定型文、差分更新は Gemini API で自然文を生成する
     if diff.get("is_initial"):
         print("初回登録: 定型文を生成...")
         message = format_initial_message(diff)
-    elif not has_any_change(diff):
-        # スキーマ変更・件数増減・追加大会名・値修正のいずれも検出されなかった場合
-        # Gemini を呼ばずに定型文で通知する（コスト節約・高速化）
-        print("変化なし: 定型文を生成（Gemini スキップ）...")
-        message = format_no_change_message(diff)
     else:
         print("Gemini APIで通知文を生成中...")
         prompt = build_prompt(diff)
