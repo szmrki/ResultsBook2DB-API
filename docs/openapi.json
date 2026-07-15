@@ -3,7 +3,7 @@
   "info": {
     "title": "ResultsBook2DB API",
     "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n> API 本体は研究室内限定公開です。\n",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "paths": {
     "/v1/four/events": {
@@ -279,6 +279,182 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListResponse_GameResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/four/events/{event_id}/standings": {
+      "get": {
+        "tags": [
+          "four / events"
+        ],
+        "summary": "List Event Standings",
+        "description": "大会の順位表を取得する（デフォルトは rank 昇順）。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    event_id: 大会 ID（URL パスから自動取得）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名（デフォルト: rank）\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StandingResponse]: 総件数・ページネーション情報・順位リスト\n\nRaises:\n    HTTPException: 指定 ID の大会が存在しない場合（404）",
+        "operationId": "list_event_standings_v1_four_events__event_id__standings_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StandingSortField",
+              "default": "rank"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_StandingResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/four/events/{event_id}/rosters": {
+      "get": {
+        "tags": [
+          "four / events"
+        ],
+        "summary": "List Event Rosters",
+        "description": "大会の出場選手一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    event_id: 大会 ID（URL パスから自動取得）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse: 総件数・ページネーション情報・出場選手リスト\n\nRaises:\n    HTTPException: 指定 ID の大会が存在しない場合（404）",
+        "operationId": "list_event_rosters_v1_four_events__event_id__rosters_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RosterSortField",
+              "default": "id"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_RosterFourResponse_"
                 }
               }
             }
@@ -1722,6 +1898,394 @@
         }
       }
     },
+    "/v1/four/standings": {
+      "get": {
+        "tags": [
+          "four / standings"
+        ],
+        "summary": "List Standings",
+        "description": "順位一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StandingResponse]: 総件数・ページネーション情報・順位リスト",
+        "operationId": "list_standings_v1_four_standings_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StandingSortField",
+              "default": "id"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_StandingResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/four/standings/{standing_id}": {
+      "get": {
+        "tags": [
+          "four / standings"
+        ],
+        "summary": "Get Standing",
+        "description": "順位を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    standing_id: 取得する順位レコードの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    Standing: 順位情報\n\nRaises:\n    HTTPException: 指定 ID の順位レコードが存在しない場合（404）",
+        "operationId": "get_standing_v1_four_standings__standing_id__get",
+        "parameters": [
+          {
+            "name": "standing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Standing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/four/rosters": {
+      "get": {
+        "tags": [
+          "four / rosters"
+        ],
+        "summary": "List Rosters",
+        "description": "出場選手一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    role: 役割の完全一致で絞り込み（\"player\" / \"coach\"、省略可）\n    is_skip: スキップフラグで絞り込み（0 / 1、four のみ有効、省略可）\n    is_vice: バイスフラグで絞り込み（0 / 1、four のみ有効、省略可）\n    gender: 性別で絞り込み（\"Male\" / \"Female\"、md のみ有効、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse: 総件数・ページネーション情報・出場選手リスト",
+        "operationId": "list_rosters_v1_four_rosters_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RosterSortField",
+              "default": "id"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team"
+            }
+          },
+          {
+            "name": "player_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Player Name"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "is_skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Skip"
+            }
+          },
+          {
+            "name": "is_vice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Vice"
+            }
+          },
+          {
+            "name": "gender",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gender"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_RosterFourResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/four/rosters/{roster_id}": {
+      "get": {
+        "tags": [
+          "four / rosters"
+        ],
+        "summary": "Get Roster",
+        "description": "出場選手を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    roster_id: 取得するロスターレコードの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    Roster: 出場選手情報\n\nRaises:\n    HTTPException: 指定 ID のロスターレコードが存在しない場合（404）",
+        "operationId": "get_roster_v1_four_rosters__roster_id__get",
+        "parameters": [
+          {
+            "name": "roster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Roster Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterFourResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/md/events": {
       "get": {
         "tags": [
@@ -1995,6 +2559,182 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListResponse_GameResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/md/events/{event_id}/standings": {
+      "get": {
+        "tags": [
+          "md / events"
+        ],
+        "summary": "List Event Standings",
+        "description": "大会の順位表を取得する（デフォルトは rank 昇順）。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    event_id: 大会 ID（URL パスから自動取得）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名（デフォルト: rank）\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StandingResponse]: 総件数・ページネーション情報・順位リスト\n\nRaises:\n    HTTPException: 指定 ID の大会が存在しない場合（404）",
+        "operationId": "list_event_standings_v1_md_events__event_id__standings_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StandingSortField",
+              "default": "rank"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_StandingResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/md/events/{event_id}/rosters": {
+      "get": {
+        "tags": [
+          "md / events"
+        ],
+        "summary": "List Event Rosters",
+        "description": "大会の出場選手一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    event_id: 大会 ID（URL パスから自動取得）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse: 総件数・ページネーション情報・出場選手リスト\n\nRaises:\n    HTTPException: 指定 ID の大会が存在しない場合（404）",
+        "operationId": "list_event_rosters_v1_md_events__event_id__rosters_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RosterSortField",
+              "default": "id"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_RosterMdResponse_"
                 }
               }
             }
@@ -3438,6 +4178,394 @@
         }
       }
     },
+    "/v1/md/standings": {
+      "get": {
+        "tags": [
+          "md / standings"
+        ],
+        "summary": "List Standings",
+        "description": "順位一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StandingResponse]: 総件数・ページネーション情報・順位リスト",
+        "operationId": "list_standings_v1_md_standings_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StandingSortField",
+              "default": "id"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_StandingResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/md/standings/{standing_id}": {
+      "get": {
+        "tags": [
+          "md / standings"
+        ],
+        "summary": "Get Standing",
+        "description": "順位を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    standing_id: 取得する順位レコードの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    Standing: 順位情報\n\nRaises:\n    HTTPException: 指定 ID の順位レコードが存在しない場合（404）",
+        "operationId": "get_standing_v1_md_standings__standing_id__get",
+        "parameters": [
+          {
+            "name": "standing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Standing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/md/rosters": {
+      "get": {
+        "tags": [
+          "md / rosters"
+        ],
+        "summary": "List Rosters",
+        "description": "出場選手一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    role: 役割の完全一致で絞り込み（\"player\" / \"coach\"、省略可）\n    is_skip: スキップフラグで絞り込み（0 / 1、four のみ有効、省略可）\n    is_vice: バイスフラグで絞り込み（0 / 1、four のみ有効、省略可）\n    gender: 性別で絞り込み（\"Male\" / \"Female\"、md のみ有効、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse: 総件数・ページネーション情報・出場選手リスト",
+        "operationId": "list_rosters_v1_md_rosters_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 1,
+              "description": "取得件数の上限（1〜100000）",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "取得件数の上限（1〜100000）"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "取得開始位置（0以上）",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "取得開始位置（0以上）"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RosterSortField",
+              "default": "id"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OrderDirection",
+              "default": "asc"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Team"
+            }
+          },
+          {
+            "name": "player_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Player Name"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "is_skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Skip"
+            }
+          },
+          {
+            "name": "is_vice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Vice"
+            }
+          },
+          {
+            "name": "gender",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gender"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_RosterMdResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/md/rosters/{roster_id}": {
+      "get": {
+        "tags": [
+          "md / rosters"
+        ],
+        "summary": "Get Roster",
+        "description": "出場選手を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    roster_id: 取得するロスターレコードの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    Roster: 出場選手情報\n\nRaises:\n    HTTPException: 指定 ID のロスターレコードが存在しない場合（404）",
+        "operationId": "get_roster_v1_md_rosters__roster_id__get",
+        "parameters": [
+          {
+            "name": "roster_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Roster Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterMdResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -3694,6 +4822,28 @@
               }
             ],
             "title": "Category"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue"
           }
         },
         "type": "object",
@@ -3701,7 +4851,9 @@
           "id",
           "name",
           "year",
-          "category"
+          "category",
+          "location",
+          "venue"
         ],
         "title": "EventResponse",
         "description": "events テーブルのレスポンスモデル。"
@@ -3984,6 +5136,68 @@
         ],
         "title": "ListResponse[LsdResponse]"
       },
+      "ListResponse_RosterFourResponse_": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/RosterFourResponse"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "data"
+        ],
+        "title": "ListResponse[RosterFourResponse]"
+      },
+      "ListResponse_RosterMdResponse_": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/RosterMdResponse"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "data"
+        ],
+        "title": "ListResponse[RosterMdResponse]"
+      },
       "ListResponse_ShotResponse_": {
         "properties": {
           "total": {
@@ -4014,6 +5228,37 @@
           "data"
         ],
         "title": "ListResponse[ShotResponse]"
+      },
+      "ListResponse_StandingResponse_": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StandingResponse"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "data"
+        ],
+        "title": "ListResponse[StandingResponse]"
       },
       "ListResponse_StoneResponse_": {
         "properties": {
@@ -4126,6 +5371,189 @@
         ],
         "title": "OrderDirection",
         "description": "ソート方向。"
+      },
+      "RosterFourResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "is_skip": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Skip"
+          },
+          "is_vice": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Vice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "team",
+          "player_name",
+          "role",
+          "position",
+          "is_skip",
+          "is_vice"
+        ],
+        "title": "RosterFourResponse",
+        "description": "rosters テーブルのレスポンスモデル（four DB 用）。\n\nposition / is_skip / is_vice を含む。"
+      },
+      "RosterMdResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "team",
+          "player_name",
+          "role",
+          "gender"
+        ],
+        "title": "RosterMdResponse",
+        "description": "rosters テーブルのレスポンスモデル（md DB 用）。gender を含む。"
+      },
+      "RosterSortField": {
+        "type": "string",
+        "enum": [
+          "id",
+          "event_id",
+          "team",
+          "player_name"
+        ],
+        "title": "RosterSortField",
+        "description": "rosters テーブルのソート可能カラム。"
       },
       "ShotResponse": {
         "properties": {
@@ -4256,6 +5684,67 @@
         ],
         "title": "ShotTurn",
         "description": "投球のターン（回転）方向。"
+      },
+      "StandingResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "rank",
+          "team"
+        ],
+        "title": "StandingResponse",
+        "description": "standings テーブルのレスポンスモデル（md / four 共通）。"
+      },
+      "StandingSortField": {
+        "type": "string",
+        "enum": [
+          "id",
+          "event_id",
+          "rank",
+          "team"
+        ],
+        "title": "StandingSortField",
+        "description": "standings テーブルのソート可能カラム。"
       },
       "StoneColor": {
         "type": "string",
