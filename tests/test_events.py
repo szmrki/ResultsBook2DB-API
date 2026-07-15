@@ -19,7 +19,14 @@ from app.models import Event
 # テスト関数の中に書いても良いが、複数のテストで使い回すので関数にまとめる。
 # pytest のフィクスチャではなく普通の関数として定義する（yield を使わないため）。
 
-def create_event(db: Session, name: str, year: int = 2023, category: str = "MD") -> Event:
+def create_event(
+    db: Session,
+    name: str,
+    year: int = 2023,
+    category: str = "MD",
+    location: str | None = None,
+    venue: str | None = None,
+) -> Event:
     """テスト用の Event レコードを DB に INSERT して返す。
 
     Args:
@@ -27,11 +34,13 @@ def create_event(db: Session, name: str, year: int = 2023, category: str = "MD")
         name: 大会コード（例: WMDCC2023）
         year: 開催年
         category: カテゴリ
+        location: 開催地（省略可）
+        venue: 会場名（省略可）
 
     Returns:
         Event: 作成した Event オブジェクト（id が採番済み）
     """
-    event = Event(name=name, year=year, category=category)
+    event = Event(name=name, year=year, category=category, location=location, venue=venue)
     db.add(event)
     db.commit()
     # commit 後は DB に保存された最新の状態（id など）を Python オブジェクトに反映する
@@ -111,6 +120,51 @@ def test_get_event(client: TestClient, md_db: Session) -> None:
     assert body["name"] == "WMDCC2023"
     assert body["year"] == 2023
     assert body["category"] == "MD"
+
+
+# ─── 3b. 単一取得で location / venue が返る（260714 で追加） ────────────────
+
+def test_get_event_includes_location_and_venue(client: TestClient, md_db: Session) -> None:
+    """260714 で追加された location / venue がレスポンスに含まれることを確認する。
+
+    Args:
+        client: HTTP クライアント
+        md_db: DB セッション
+    """
+    # Arrange
+    event = create_event(
+        md_db, name="ECC2023Men", year=2023, category="Men",
+        location="Aberdeen, Scotland", venue="Curl Aberdeen",
+    )
+
+    # Act
+    response = client.get(f"/v1/md/events/{event.id}")
+
+    # Assert
+    assert response.status_code == 200
+    body = response.json()
+    assert body["location"] == "Aberdeen, Scotland"
+    assert body["venue"] == "Curl Aberdeen"
+
+
+def test_get_event_location_venue_nullable(client: TestClient, md_db: Session) -> None:
+    """location / venue 未設定の大会では null が返ることを確認する。
+
+    Args:
+        client: HTTP クライアント
+        md_db: DB セッション
+    """
+    # Arrange: location / venue を渡さない
+    event = create_event(md_db, name="WMDCC2023", year=2023, category="MD")
+
+    # Act
+    response = client.get(f"/v1/md/events/{event.id}")
+
+    # Assert
+    assert response.status_code == 200
+    body = response.json()
+    assert body["location"] is None
+    assert body["venue"] is None
 
 
 # ─── 4. 単一取得（404） ────────────────────────────────────────────────────
