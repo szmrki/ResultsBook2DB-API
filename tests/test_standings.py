@@ -1,7 +1,8 @@
 """
 /v1/{md,four}/standings エンドポイントのテスト。
 
-standings は md / four で同一スキーマ（id, event_id, rank, team）なので、
+standings は md / four で同一スキーマ（id, event_id, rank, team）。
+rank は同一大会内で重複しうる（タイあり）点に注意。以下では
 基本は four DB 側で代表して検証する（一覧・単一・404・フィルタ・ソート）。
 大会配下エンドポイント /events/{event_id}/standings も併せて確認する。
 """

@@ -5,16 +5,19 @@
 - `md`   : ミックスダブルス（2人制）
 - `four` : 4人制（Men / Women / Junior Men / Junior Women）
 
-両DBは同一の6テーブル構成。リレーションは以下（すべて `ON DELETE CASCADE`）。
+両DBは同一の8テーブル構成。リレーションは以下（すべて `ON DELETE CASCADE`）。
 
 ```
 events  →  games  →  ends  →  shots  →  stones
-                  ↑
-                lsds（game 単位）
+   │              ↑
+   │            lsds（game 単位）
+   ├──  standings（event 単位）
+   └──  rosters   （event 単位）
 ```
 
 - `events`（大会）→ `games`（試合）→ `ends`（エンド）→ `shots`（投球）→ `stones`（ストーン座標）
 - `lsds`（Last Stone Draw）は `games` 配下
+- `standings` 大会順位 と `rosters` 出場選手 は `events` 直下。`games` を経由しない
 
 ---
 
@@ -26,6 +29,8 @@ events  →  games  →  ends  →  shots  →  stones
 | name | STRING | 大会コード（例: WMDCC2023）、UNIQUE |
 | year | INTEGER | 開催年 |
 | category | STRING | カテゴリ（MD / Men / Women / Junior Men / Junior Women） |
+| location | STRING | 開催地。例 Aberdeen, Scotland。NULL あり |
+| venue | STRING | 会場名。例 Curl Aberdeen。NULL あり |
 
 ## games テーブル（試合）
 
@@ -105,6 +110,35 @@ no statistics / not played
 | player_name | STRING | 投球選手名（↻ 記号でターン方向を表す場合あり） |
 | distance_cm | FLOAT | ティーからの距離（cm、範囲 0.1〜199.6） |
 
+## standings テーブル（大会順位）
+
+大会ごとの最終順位表。`events` 直下で `games` を経由しない。md / four 同一スキーマ。
+1大会につき参加チーム数ぶんの行を持つ。`rank` は同一大会内で重複しうる。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | 順位ID（PK） |
+| event_id | INTEGER | 所属大会ID（FK → events.id） |
+| rank | INTEGER | 順位。1〜 |
+| team | STRING | チーム名。国コード略称、例 SCO |
+
+## rosters テーブル（出場選手）
+
+大会ごとの出場メンバー。`events` 直下。role が player か coach かを持つ。
+md / four でカラム構成が異なり、片方のみ保持で他方は NULL。
+
+| カラム | 型 | 説明 |
+|---|---|---|
+| id | INTEGER | ロスターID（PK） |
+| event_id | INTEGER | 所属大会ID（FK → events.id） |
+| team | STRING | チーム名。国コード略称、例 SCO |
+| player_name | STRING | 選手・コーチ名。例 MOUAT Bruce |
+| role | STRING | 役割。player / coach |
+| position | INTEGER | ポジション番号 1〜5。four のみ、coach と md は NULL |
+| is_skip | INTEGER | スキップフラグ 1/0。four のみ、md は NULL |
+| is_vice | INTEGER | バイススキップフラグ 1/0。four のみ、md は NULL |
+| gender | STRING | 性別 Male / Female。md のみ、coach と four は NULL |
+
 ---
 
 ## md / four の差異まとめ
@@ -113,6 +147,8 @@ no statistics / not played
 |---|---|---|
 | カテゴリ | MD のみ | Men / Women / Junior Men / Junior Women |
 | ends.is_power_play | あり | NULL |
-| stones.shot_order | あり | あり |
+| stones.shot_order | あり。未対応の大会のみ NULL | あり。未対応の大会のみ NULL |
+| rosters.gender | あり | NULL |
+| rosters.position / is_skip / is_vice | NULL | あり |
 | shots データ充実度 | 大会により NULL 多し | ほぼ全投球に type・選手名あり |
 | 収録規模 | 13大会 / 1,419試合 / 座標約41.8万行 | 42大会 / 2,241試合 / 座標約115万行 |
