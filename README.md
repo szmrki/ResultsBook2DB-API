@@ -20,6 +20,8 @@
 | GET | `/v1/four/events` | 大会一覧 |
 | GET | `/v1/four/events/{id}` | 大会1件 |
 | GET | `/v1/four/events/{id}/games` | 大会の試合一覧 |
+| GET | `/v1/four/events/{id}/standings` | 大会の順位表 |
+| GET | `/v1/four/events/{id}/rosters` | 大会の出場選手一覧 |
 | GET | `/v1/four/games` | 試合一覧 |
 | GET | `/v1/four/games/{id}` | 試合1件 |
 | GET | `/v1/four/games/{id}/ends` | 試合のエンド一覧 |
@@ -34,6 +36,10 @@
 | GET | `/v1/four/stones/{id}` | ストーン1件 |
 | GET | `/v1/four/lsds` | LSD一覧 |
 | GET | `/v1/four/lsds/{id}` | LSD1件 |
+| GET | `/v1/four/standings` | 順位一覧 |
+| GET | `/v1/four/standings/{id}` | 順位1件 |
+| GET | `/v1/four/rosters` | 出場選手一覧 |
+| GET | `/v1/four/rosters/{id}` | 出場選手1件 |
 
 ### 共通クエリパラメータ
 

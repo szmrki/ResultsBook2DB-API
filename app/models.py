@@ -4,14 +4,20 @@ DBの各テーブルをPythonクラスとして表現する。
 
 テーブル構造:
     events（大会）
-      └── games（試合）
-            ├── ends（エンド）
-            │     └── shots（投球）
-            │           └── stones（ストーン座標）
-            └── lsds（LSD記録）
+      ├── games（試合）
+      │     ├── ends（エンド）
+      │     │     └── shots（投球）
+      │     │           └── stones（ストーン座標）
+      │     └── lsds（LSD記録）
+      ├── standings（大会順位）
+      └── rosters（出場選手）
 
-md DB / four DB は同じ6テーブル構成を共有。
-唯一の差異は ends.is_power_play（md のみ使用、four では常に NULL）。
+md DB / four DB は同じ8テーブル構成を共有。
+DB 間で列が異なるカラム（片方のみ保持、他方は NULL）:
+    - ends.is_power_play  … md のみ使用
+    - stones.shot_order   … md / four とも保持（未対応の大会のみ NULL）
+    - rosters.gender      … md のみ
+    - rosters.position / is_skip / is_vice … four のみ
 """
 
 from sqlalchemy import Column, Float, ForeignKey, Integer, String
@@ -40,12 +46,22 @@ class Event(Base):
     name = Column(String, nullable=False, unique=True)
     year = Column(Integer)
     category = Column(String)
+    # 260714 DB で追加。開催地・会場名（どちらも一部 NULL）
+    location = Column(String)   # 例: "Aberdeen, Scotland"
+    venue = Column(String)      # 例: "Curl Aberdeen"
 
     # relationship: games テーブルと紐づけ
     #   back_populates="event" → Game モデル側の .event 属性と対応
     #   cascade="all, delete-orphan" → この大会を削除すると配下の試合も連鎖削除
     games: Mapped[list["Game"]] = relationship(
         "Game", back_populates="event", cascade="all, delete-orphan"
+    )
+    # standings / rosters は大会に直接ぶら下がる（games を経由しない）
+    standings: Mapped[list["Standing"]] = relationship(
+        "Standing", back_populates="event", cascade="all, delete-orphan"
+    )
+    rosters: Mapped[list["Roster"]] = relationship(
+        "Roster", back_populates="event", cascade="all, delete-orphan"
     )
 
 
@@ -186,7 +202,7 @@ class Stone(Base):
         insheet: シート内フラグ（1=シート内, 0=シート外）
         shot_order: このストーンが何投目に投げられたかを示す投球順。
             盤面に残る各ストーンの由来投球を保持する。
-            現状は four DB のみ保持（md DB では NULL、今後対応予定）
+            md / four とも保持する。ただし未対応の大会分は NULL（把握済み）。
         shot: 対応投球オブジェクト（relationship）
     """
 
@@ -202,8 +218,7 @@ class Stone(Base):
     distance_from_center = Column(Float)
     inhouse = Column(Integer)
     insheet = Column(Integer)
-    # 片方のDBのみ持つカラムは nullable にしておく（is_power_play と同じ方針）
-    # 移行スクリプトは models.py ∩ SQLite の積集合を移すため、列が無いDBでは自動で NULL になる
+    # md / four とも保持するが、未対応の大会分は値が NULL になる（nullable のまま）
     shot_order = Column(Integer)
 
     shot: Mapped["Shot"] = relationship("Shot", back_populates="stones")
@@ -235,3 +250,72 @@ class Lsd(Base):
     distance_cm = Column(Float)
 
     game: Mapped["Game"] = relationship("Game", back_populates="lsds")
+
+
+class Standing(Base):
+    """順位テーブル。大会ごとの最終順位表を格納。
+
+    大会に直接ぶら下がる（games を経由しない）。md / four で同一スキーマ。
+    1大会につき参加チーム数ぶんの行を持つ。rank は同一大会内で重複しうる（タイあり）。
+
+    Attributes:
+        id: 順位ID（主キー、自動採番）
+        event_id: 所属大会ID（events.id への外部キー）
+        rank: 順位（1〜）
+        team: チーム名（国コード略称、例: "SCO"）
+        event: 所属大会オブジェクト（relationship）
+    """
+
+    __tablename__ = "standings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # index=True → standings?event_id=... / 大会順位表の絞り込みを高速化
+    event_id = Column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True
+    )
+    rank = Column(Integer)
+    team = Column(String)
+
+    event: Mapped["Event"] = relationship("Event", back_populates="standings")
+
+
+class Roster(Base):
+    """出場選手テーブル。大会ごとの出場メンバー（選手・コーチ）を格納。
+
+    大会に直接ぶら下がる。md / four でカラム構成が異なるため、両者の和集合を
+    1モデルに定義する（ends.is_power_play と同じ方針）。移行スクリプトは
+    models.py ∩ SQLite の積集合を移すため、列が無いDBでは自動で NULL になる。
+        - four DB: position / is_skip / is_vice を保持（gender は NULL）
+        - md DB  : gender を保持（position / is_skip / is_vice は NULL）
+
+    Attributes:
+        id: ロスターID（主キー、自動採番）
+        event_id: 所属大会ID（events.id への外部キー）
+        team: チーム名（国コード略称、例: "SCO"）
+        player_name: 選手・コーチ名（例: "MOUAT Bruce"）
+        role: 役割（"player" / "coach"）
+        position: ポジション番号（1〜5、four のみ。coach や md では NULL）
+        is_skip: スキップフラグ（1=スキップ, 0=それ以外、four のみ。md では NULL）
+        is_vice: バイススキップフラグ（1=バイス, 0=それ以外、four のみ。md では NULL）
+        gender: 性別（"Male" / "Female"、md のみ。coach や four では NULL）
+        event: 所属大会オブジェクト（relationship）
+    """
+
+    __tablename__ = "rosters"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # index=True → rosters?event_id=... / 大会出場選手の絞り込みを高速化
+    event_id = Column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True
+    )
+    team = Column(String)
+    player_name = Column(String)
+    role = Column(String)
+    # four DB のみ保持（md では NULL）
+    position = Column(Integer)
+    is_skip = Column(Integer)
+    is_vice = Column(Integer)
+    # md DB のみ保持（four では NULL）
+    gender = Column(String)
+
+    event: Mapped["Event"] = relationship("Event", back_populates="rosters")

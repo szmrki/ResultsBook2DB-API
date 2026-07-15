@@ -35,7 +35,16 @@ load_dotenv()
 # models.py で定義した Base（全テーブル情報を持つ）をインポート
 # Base.metadata にテーブル定義が格納されている
 from app.database import Base  # noqa: E402
-from app.models import End, Event, Game, Lsd, Shot, Stone  # noqa: E402
+from app.models import (  # noqa: E402
+    End,
+    Event,
+    Game,
+    Lsd,
+    Roster,
+    Shot,
+    Standing,
+    Stone,
+)
 
 # ─── 設定 ──────────────────────────────────────────────────────────────────────
 
@@ -46,7 +55,8 @@ BATCH_SIZE = 5000
 
 # 移行するモデルを投入順に並べる（外部キー制約に従い親テーブルから順に）
 # events → games → ends → shots → stones、および games の子の lsds
-_MODELS_IN_ORDER = [Event, Game, End, Shot, Stone, Lsd]
+# standings / rosters は events の子（games を経由しない）なので Event の後ならどこでもよい
+_MODELS_IN_ORDER = [Event, Standing, Roster, Game, End, Shot, Stone, Lsd]
 
 # テーブル情報を各モデルから自動生成する
 # - sqlite_table: SQLite 側のテーブル名（= モデルの __tablename__）
