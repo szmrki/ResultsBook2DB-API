@@ -130,6 +130,22 @@ class LsdSortField(str, Enum):
     distance_cm = "distance_cm"
 
 
+class StandingSortField(str, Enum):
+    """standings テーブルのソート可能カラム。"""
+    id = "id"
+    event_id = "event_id"
+    rank = "rank"
+    team = "team"  # type: ignore[assignment]
+
+
+class RosterSortField(str, Enum):
+    """rosters テーブルのソート可能カラム。"""
+    id = "id"
+    event_id = "event_id"
+    team = "team"  # type: ignore[assignment]
+    player_name = "player_name"
+
+
 # ─── レスポンスモデル ─────────────────────────────────────────────────────────
 # ORMBase を継承しているので、SQLAlchemy オブジェクトをそのまま渡せる。
 # int | None のように書くのは「int か null のどちらでもよい」という意味。
@@ -141,6 +157,9 @@ class EventResponse(ORMBase):
     name: str
     year: int | None
     category: str | None
+    # 260714 DB で追加（どちらも一部 NULL）
+    location: str | None
+    venue: str | None
 
 
 class GameResponse(ORMBase):
@@ -205,7 +224,7 @@ class StoneResponse(ORMBase):
     distance_from_center: float | None
     inhouse: int | None
     insheet: int | None
-    # four DB のみ保持（md DB では NULL、今後対応予定）
+    # md / four とも保持（未対応の大会分は NULL）
     shot_order: int | None
 
 
@@ -217,3 +236,39 @@ class LsdResponse(ORMBase):
     team: str | None
     player_name: str | None
     distance_cm: float | None
+
+
+class StandingResponse(ORMBase):
+    """standings テーブルのレスポンスモデル（md / four 共通）。"""
+
+    id: int
+    event_id: int | None
+    rank: int | None
+    team: str | None
+
+
+class RosterMdResponse(ORMBase):
+    """rosters テーブルのレスポンスモデル（md DB 用）。gender を含む。"""
+
+    id: int
+    event_id: int | None
+    team: str | None
+    player_name: str | None
+    role: str | None
+    gender: str | None
+
+
+class RosterFourResponse(ORMBase):
+    """rosters テーブルのレスポンスモデル（four DB 用）。
+
+    position / is_skip / is_vice を含む。
+    """
+
+    id: int
+    event_id: int | None
+    team: str | None
+    player_name: str | None
+    role: str | None
+    position: int | None
+    is_skip: int | None
+    is_vice: int | None

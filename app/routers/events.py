@@ -1,14 +1,14 @@
 """events ルーター。大会の一覧・単一取得・配下の試合一覧を提供する。"""
 
 from collections.abc import Callable, Generator
-from typing import cast
+from typing import Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from app.models import Event, Game
+from app.models import Event, Game, Roster, Standing
 from app.pagination import limit_query, offset_query
 from app.schemas import (
     EventResponse,
@@ -17,11 +17,17 @@ from app.schemas import (
     GameSortField,
     ListResponse,
     OrderDirection,
+    RosterFourResponse,
+    RosterMdResponse,
+    RosterSortField,
+    StandingResponse,
+    StandingSortField,
 )
 
 
 def create_router(
     get_db: Callable[[], Generator[Session, None, None]],
+    roster_response_model: type[Union[RosterMdResponse, RosterFourResponse]],
     limiter: Limiter,
     rate_limit: str,
 ) -> APIRouter:
@@ -29,6 +35,8 @@ def create_router(
 
     Args:
         get_db: DBセッションを yield するジェネレータ関数（get_md_db / get_four_db）
+        roster_response_model: rosters のレスポンスモデル（md / four で異なる）。
+            /events/{event_id}/rosters のレスポンス型に使う
         limiter: レートリミッターオブジェクト（main.py から渡される）
         rate_limit: レートリミットの上限（例: "100/minute"）。main.py の RATE_LIMIT 定数を渡す
 
@@ -156,6 +164,101 @@ def create_router(
         )
         total = query.count()
         records = cast(list[GameResponse], query.offset(offset).limit(limit).all())
+        return ListResponse(total=total, limit=limit, offset=offset, data=records)
+
+    @router.get(
+        "/events/{event_id}/standings",
+        response_model=ListResponse[StandingResponse],
+    )
+    @limiter.limit(rate_limit)
+    def list_event_standings(
+        request: Request,  # noqa: ARG001
+        event_id: int,
+        limit: int = limit_query(),
+        offset: int = offset_query(),
+        sort: StandingSortField = StandingSortField.rank,
+        order: OrderDirection = OrderDirection.asc,
+        db: Session = Depends(get_db),
+    ) -> ListResponse[StandingResponse]:
+        """大会の順位表を取得する（デフォルトは rank 昇順）。
+
+        Args:
+            request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
+            event_id: 大会 ID（URL パスから自動取得）
+            limit: 取得件数の上限（1〜100000）
+            offset: 取得開始位置（0以上）
+            sort: ソート対象カラム名（デフォルト: rank）
+            order: ソート方向（asc / desc）
+            db: DB セッション（依存性注入）
+
+        Returns:
+            ListResponse[StandingResponse]: 総件数・ページネーション情報・順位リスト
+
+        Raises:
+            HTTPException: 指定 ID の大会が存在しない場合（404）
+        """
+        event = db.query(Event).filter(Event.id == event_id).first()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        order_func = asc if order == OrderDirection.asc else desc
+        query = (
+            db.query(Standing)
+            .filter(Standing.event_id == event_id)
+            .order_by(order_func(getattr(Standing, sort.value)))
+        )
+        total = query.count()
+        records = cast(
+            list[StandingResponse], query.offset(offset).limit(limit).all()
+        )
+        return ListResponse(total=total, limit=limit, offset=offset, data=records)
+
+    @router.get(
+        "/events/{event_id}/rosters",
+        response_model=ListResponse[roster_response_model],  # type: ignore[valid-type]
+    )
+    @limiter.limit(rate_limit)
+    def list_event_rosters(
+        request: Request,  # noqa: ARG001
+        event_id: int,
+        limit: int = limit_query(),
+        offset: int = offset_query(),
+        sort: RosterSortField = RosterSortField.id,
+        order: OrderDirection = OrderDirection.asc,
+        db: Session = Depends(get_db),
+    ) -> ListResponse:
+        """大会の出場選手一覧を取得する。
+
+        Args:
+            request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
+            event_id: 大会 ID（URL パスから自動取得）
+            limit: 取得件数の上限（1〜100000）
+            offset: 取得開始位置（0以上）
+            sort: ソート対象カラム名
+            order: ソート方向（asc / desc）
+            db: DB セッション（依存性注入）
+
+        Returns:
+            ListResponse: 総件数・ページネーション情報・出場選手リスト
+
+        Raises:
+            HTTPException: 指定 ID の大会が存在しない場合（404）
+        """
+        event = db.query(Event).filter(Event.id == event_id).first()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        order_func = asc if order == OrderDirection.asc else desc
+        query = (
+            db.query(Roster)
+            .filter(Roster.event_id == event_id)
+            .order_by(order_func(getattr(Roster, sort.value)))
+        )
+        total = query.count()
+        records = cast(
+            list[RosterMdResponse | RosterFourResponse],
+            query.offset(offset).limit(limit).all(),
+        )
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
     return router

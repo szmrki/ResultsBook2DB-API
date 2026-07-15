@@ -30,8 +30,22 @@ load_dotenv()
 
 from app.database import get_four_db, get_md_db  # noqa: E402
 from app.logging import get_logger, setup_logging  # noqa: E402
-from app.routers import ends, events, games, lsds, shots, stones  # noqa: E402
-from app.schemas import EndFourResponse, EndMdResponse  # noqa: E402
+from app.routers import (  # noqa: E402
+    ends,
+    events,
+    games,
+    lsds,
+    rosters,
+    shots,
+    standings,
+    stones,
+)
+from app.schemas import (  # noqa: E402
+    EndFourResponse,
+    EndMdResponse,
+    RosterFourResponse,
+    RosterMdResponse,
+)
 
 # ─── ログ設定初期化 ───────────────────────────────────────────────────────────
 setup_logging()
@@ -188,7 +202,7 @@ async def log_requests(
 
 # --- four DB ルーター ---
 app.include_router(
-    events.create_router(get_four_db, limiter, RATE_LIMIT),
+    events.create_router(get_four_db, RosterFourResponse, limiter, RATE_LIMIT),
     prefix="/v1/four",
     tags=["four / events"],
 )
@@ -217,10 +231,20 @@ app.include_router(
     prefix="/v1/four",
     tags=["four / lsds"],
 )
+app.include_router(
+    standings.create_router(get_four_db, limiter, RATE_LIMIT),
+    prefix="/v1/four",
+    tags=["four / standings"],
+)
+app.include_router(
+    rosters.create_router(get_four_db, RosterFourResponse, limiter, RATE_LIMIT),
+    prefix="/v1/four",
+    tags=["four / rosters"],
+)
 
 # --- md DB ルーター ---
 app.include_router(
-    events.create_router(get_md_db, limiter, RATE_LIMIT),
+    events.create_router(get_md_db, RosterMdResponse, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / events"],
 )
@@ -248,6 +272,16 @@ app.include_router(
     lsds.create_router(get_md_db, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / lsds"],
+)
+app.include_router(
+    standings.create_router(get_md_db, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / standings"],
+)
+app.include_router(
+    rosters.create_router(get_md_db, RosterMdResponse, limiter, RATE_LIMIT),
+    prefix="/v1/md",
+    tags=["md / rosters"],
 )
 
 
