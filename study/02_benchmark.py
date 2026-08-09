@@ -183,7 +183,8 @@ def q2_spark_jdbc(num_partitions: int = 1) -> DataFrame:
     return (df.filter(F.col("shot_order").isNotNull() & (F.col("shot_order") > 0))
               .groupBy("shot_order")
               .agg(F.avg("distance_from_center").alias("avg_dist"))
-              .orderBy("shot_order"))
+              .orderBy("shot_order")
+              )
 
 
 # --- 経路2: Q3 (4段 JOIN → シャッフルが何回出るか) ----------------------
@@ -196,9 +197,23 @@ def q3_spark_jdbc(num_partitions: int = 1) -> DataFrame:
     Returns:
         event 名と shot_order ごとの件数の DataFrame。実行は呼び出し側の collect()。
     """
-    # TODO: shots / ends / games / events も spark.read.jdbc() で読み、
+    stones = read_stones(num_partitions)
+    shots = spark.read.jdbc(JDBC_URL, "shots", properties=JDBC_PROPS)
+    ends = spark.read.jdbc(JDBC_URL, "ends", properties=JDBC_PROPS)
+    games = spark.read.jdbc(JDBC_URL, "games", properties=JDBC_PROPS)
+    events = spark.read.jdbc(JDBC_URL, "events", properties=JDBC_PROPS)
+
+    # shots / ends / games / events も spark.read.jdbc() で読み、
     #       .join() で繋いでから groupBy する
-    raise NotImplementedError
+    return (stones.filter(F.col("shot_order") > 0)
+              .join(shots, stones["shot_id"] == shots["id"])
+              .join(ends, shots["end_id"] == ends["id"])
+              .join(games, ends["game_id"] == games["id"])
+              .join(events, games["event_id"] == events["id"])
+              .groupBy(events["name"], stones["shot_order"])
+              .agg(F.count("*").alias("n"))
+              .orderBy(events["name"], stones["shot_order"])
+              )
 
 
 # --- 経路2: Q4 (述語プッシュダウンの効果) -------------------------------
