@@ -65,8 +65,8 @@ services:
       # POSTGRES_DB は指定しない（docker/init.sql で rb2db_md / rb2db_four を作成）
     # ports の記述を削除
     # コンテナ間通信はdocker-composeの内部ネットワークで十分
-    # ports:
-      #- "5432:5432" # ホストから直接 psql で接続したい場合に使う
+    ports:
+      - "5432:5432" # ホストから直接 psql で接続したい場合に使う
       
     volumes:
       - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql

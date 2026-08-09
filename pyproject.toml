@@ -9,6 +9,7 @@ dependencies = [
     "google-genai>=2.8.0",
     "mcp[cli]>=1.28.1",
     "psycopg2-binary>=2.9.12",
+    "pyspark>=4.2.0",
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",
     "slowapi>=0.1.9",
