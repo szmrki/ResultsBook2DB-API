@@ -309,6 +309,6 @@ if __name__ == "__main__":
             print(f"\n=== {title} ===")
             print(f"[未実装] {spark_fn.__name__} を実装してください")
             continue
-        run_query(title, sql, spark_fn)
+        run_query(title, sql, spark_fn, partitions=(1, 2, 4, 8, 16, 32))
 
     spark.stop()  # SparkSession を終了
