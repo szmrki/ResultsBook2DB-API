@@ -1,8 +1,10 @@
 """ 演習1: PostgreSQL vs Spark ベンチマーク(Q1: x, y の平均・標準偏差)"""
 
+import inspect
 import math
 import os
 import statistics
+import sys
 import time
 from collections.abc import Callable
 from typing import Any
@@ -69,22 +71,56 @@ def measure(
     return {"label": label, "median": median, "times": times, "result": result}
 
 # --- 経路1: PostgreSQL で直接 SQL --------------------------------
+# 経路1はどのクエリも「SQL を投げて結果を取る」だけなので1関数に共通化する。
+# 経路2(Spark)はクエリごとに書き方が変わるため、Q ごとに関数を分ける。
+def run_pg(sql: str) -> list[tuple]:
+    """PostgreSQL に SQL を投げて全行取得する。
+
+    Args:
+        sql: 実行する SELECT 文。
+
+    Returns:
+        結果行のリスト。各行はカラム値のタプル。
+    """
+    # 毎回接続しなおす。接続の使い回しで速く見えるのを避けるため
+    with psycopg2.connect(**PG) as conn, conn.cursor() as cur:
+        cur.execute(sql)
+        return cur.fetchall()
+
+
+# --- 各クエリの SQL --------------------------------
 Q1_SQL = """
     SELECT AVG(x) AS avg_x, STDDEV(x) AS std_x,
            AVG(y) AS avg_y, STDDEV(y) AS std_y
     FROM stones
 """
 
-def q1_postgres() -> tuple[float, float, float, float]:
-    """PostgreSQL に直接 SQL を投げて結果を1行取得する。
+# Q2: shot_order 別の平均距離。NULL と負値の除外は必須(sql_notes.md §2)
+Q2_SQL = """
+    SELECT shot_order, AVG(distance_from_center) AS avg_dist
+    FROM stones
+    WHERE shot_order IS NOT NULL AND shot_order > 0
+    GROUP BY shot_order ORDER BY shot_order
+"""
 
-    Returns:
-        (avg_x, std_x, avg_y, std_y) の4要素タプル。
-    """
-    # 毎回接続しなおす。接続の使い回しで速く見えるのを避けるため
-    with psycopg2.connect(**PG) as conn, conn.cursor() as cur:
-        cur.execute(Q1_SQL)
-        return cur.fetchone()
+# Q3: event 別 x shot_order 別の件数(4段 JOIN)
+Q3_SQL = """
+    SELECT e.name, st.shot_order, COUNT(*) AS n
+    FROM stones st
+    JOIN shots sh ON st.shot_id = sh.id
+    JOIN ends en  ON sh.end_id  = en.id
+    JOIN games g  ON en.game_id = g.id
+    JOIN events e ON g.event_id = e.id
+    WHERE st.shot_order > 0
+    GROUP BY e.name, st.shot_order
+    ORDER BY e.name, st.shot_order
+"""
+
+# Q4: inhouse=1 に絞った座標集計(述語プッシュダウン)
+Q4_SQL = """
+    SELECT AVG(x) AS avg_x, AVG(y) AS avg_y, COUNT(*) AS n
+    FROM stones WHERE inhouse = 1
+"""
 
 # --- 経路2: Spark + JDBC --------------------------------
 spark = (SparkSession.builder
@@ -132,33 +168,123 @@ def q1_spark_jdbc(num_partitions: int = 1) -> list[Row]:
 
     return agg.collect() # ← アクション。ここで初めて実行される（§2-1）
 
-# --- 実行 --------------------------------
-if __name__ == "__main__":
-    print("=== Q1: stones の x, y の平均・標準偏差 ===\n")
 
-    # 実行計画を先に確認 (§5-5)
-    print("--- 実行計画 ---")
-    read_stones(1).agg(F.avg("x")).explain()
-    print()
+# --- 経路2: Q2 (groupBy → Exchange hashpartitioning が出るはず) ----------
+def q2_spark_jdbc(num_partitions: int = 1) -> list[Row]:
+    """Spark で Q2(shot_order 別の平均距離)を集計する。
+
+    Args:
+        num_partitions: JDBC の並列読み込み数（§2-2）。
+
+    Returns:
+        shot_order ごとの集計結果の Row リスト。
+    """
+    # TODO: df.filter(...).groupBy("shot_order").agg(...).orderBy(...) を書く
+    #       NULL と負値の除外を忘れないこと(sql_notes.md §2)
+    raise NotImplementedError
+
+
+# --- 経路2: Q3 (4段 JOIN → シャッフルが何回出るか) ----------------------
+def q3_spark_jdbc(num_partitions: int = 1) -> list[Row]:
+    """Spark で Q3(event 別 x shot_order 別の件数)を集計する。
+
+    Args:
+        num_partitions: JDBC の並列読み込み数（§2-2）。
+
+    Returns:
+        event 名と shot_order ごとの件数の Row リスト。
+    """
+    # TODO: shots / ends / games / events も spark.read.jdbc() で読み、
+    #       .join() で繋いでから groupBy する
+    raise NotImplementedError
+
+
+# --- 経路2: Q4 (述語プッシュダウンの効果) -------------------------------
+def q4_spark_jdbc(num_partitions: int = 1) -> list[Row]:
+    """Spark で Q4(inhouse=1 に絞った座標集計)を行う。
+
+    Args:
+        num_partitions: JDBC の並列読み込み数（§2-2）。
+
+    Returns:
+        集計結果の Row を1件だけ含むリスト。
+    """
+    # TODO: df.filter(F.col("inhouse") == 1).agg(...) を書く
+    raise NotImplementedError
+
+
+# --- 測定ブロック --------------------------------
+def run_query(
+    title: str,
+    sql: str,
+    spark_fn: Callable[[int], list[Row]],
+    partitions: tuple[int, ...] = (1, 4, 8),
+) -> list[dict[str, Any]]:
+    """1つのクエリについて経路1・経路2を測定し、結果の一致を確認する。
+
+    Args:
+        title: 見出しに出すクエリの説明。
+        sql: 経路1(PostgreSQL)に投げる SQL。
+        spark_fn: 経路2(Spark)の集計関数。分割数を引数に取る。
+        partitions: 測定する JDBC 分割数のタプル。
+
+    Returns:
+        measure() の戻り値のリスト。先頭が経路1、以降が経路2。
+    """
+    print(f"\n=== {title} ===\n")
 
     print("--- 測定 ---")
-    results = [
-        measure("経路1: PostgreSQL", q1_postgres),
-        measure("経路2: Spark + JDBC (1分割)", lambda: q1_spark_jdbc(1)),
-        measure("経路2: Spark + JDBC (4分割)", lambda: q1_spark_jdbc(4)),
-        measure("経路2: Spark + JDBC (8分割)", lambda: q1_spark_jdbc(8)),
-    ]
+    results = [measure("経路1: PostgreSQL", lambda: run_pg(sql))]
+    for p in partitions:
+        results.append(
+            measure(f"経路2: Spark + JDBC ({p}分割)", lambda p=p: spark_fn(p))
+        )
 
     # 結果の一致確認。目視で桁を比べず、機械的に判定する
     # 分割数を変えると最下位ビットがずれるため、完全一致(==)では比較できない
     print("\n--- 結果の一致確認 ---")
-    pg_row = results[0]["result"]
+    pg_rows = results[0]["result"]
     for r in results[1:]:
-        spark_row = r["result"][0]
-        ok = all(
-            math.isclose(a, b, rel_tol=1e-9)  # 相対誤差 1e-9 以内なら同一とみなす
-            for a, b in zip(pg_row, spark_row, strict=True)
+        spark_rows = r["result"]
+        ok = len(pg_rows) == len(spark_rows) and all(
+            math.isclose(a, b, rel_tol=1e-9) if isinstance(a, float) else a == b
+            for pg_row, sp_row in zip(pg_rows, spark_rows, strict=True)
+            for a, b in zip(pg_row, sp_row, strict=True)
         )
         print(f"{r['label']:28} {'OK' if ok else 'NG'}")
+
+    return results
+
+
+# --- 実行 --------------------------------
+# 測定対象の一覧。キーはコマンドライン引数に使う
+QUERIES = {
+    "q1": ("Q1: stones の x, y の平均・標準偏差", Q1_SQL, q1_spark_jdbc),
+    "q2": ("Q2: shot_order 別の平均距離 (GROUP BY)", Q2_SQL, q2_spark_jdbc),
+    "q3": ("Q3: event 別 x shot_order 別の件数 (4段 JOIN)", Q3_SQL, q3_spark_jdbc),
+    "q4": ("Q4: inhouse=1 の座標集計 (述語プッシュダウン)", Q4_SQL, q4_spark_jdbc),
+}
+
+if __name__ == "__main__":
+    # 引数でクエリを選べる: uv run python study/02_benchmark.py q2
+    # 省略時は実装済みのものを全て実行する
+    targets = sys.argv[1:] or list(QUERIES)
+
+    # 実行計画を先に確認 (§5-5)
+    print("--- 実行計画 (Q1) ---")
+    read_stones(1).agg(F.avg("x")).explain()
+
+    for key in targets:
+        if key not in QUERIES:
+            print(f"\n[skip] 未知のクエリ: {key}")
+            continue
+        title, sql, spark_fn = QUERIES[key]
+        # 未実装のものは経路1を測る前にスキップする(見出しの二重表示を避ける)。
+        # 関数の中身に NotImplementedError があるかで判定する
+        if "NotImplementedError" in inspect.getsource(spark_fn):
+            print(f"\n=== {title} ===")
+            print(f"[未実装] {spark_fn.__name__} を実装してください")
+            continue
+        run_query(title, sql, spark_fn)
 
     spark.stop()  # SparkSession を終了
