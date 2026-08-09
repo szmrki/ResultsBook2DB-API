@@ -226,8 +226,13 @@ def q4_spark_jdbc(num_partitions: int = 1) -> DataFrame:
     Returns:
         集計結果の DataFrame。実行は呼び出し側の collect()。
     """
-    # TODO: df.filter(F.col("inhouse") == 1).agg(...) を書く
-    raise NotImplementedError
+    df = read_stones(num_partitions)
+    # df.filter(F.col("inhouse") == 1).agg(...) を書く
+    return (df.filter(F.col("inhouse") == 1)
+              .agg(F.avg("x").alias("avg_x"),
+                   F.avg("y").alias("avg_y"),
+                   F.count("*").alias("n"))
+            )
 
 
 # --- 測定ブロック --------------------------------
