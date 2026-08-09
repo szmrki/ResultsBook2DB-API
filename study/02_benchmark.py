@@ -11,7 +11,7 @@ from typing import Any
 
 import psycopg2
 from dotenv import load_dotenv
-from pyspark.sql import DataFrame, Row, SparkSession
+from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
 load_dotenv()
@@ -151,48 +151,50 @@ def read_stones(num_partitions: int = 1) -> DataFrame:
         properties=JDBC_PROPS,
     )
 
-def q1_spark_jdbc(num_partitions: int = 1) -> list[Row]:
-    """ SparkでQ1と同じ集計を行う。
-    
-    Args: 
+def q1_spark_jdbc(num_partitions: int = 1) -> DataFrame:
+    """Spark で Q1 と同じ集計を行う DataFrame を組み立てる。
+
+    Args:
         num_partitions: JDBC の並列読み込み数（§2-2）。
 
     Returns:
-        集計結果の Row を1件だけ含むリスト。
+        集計結果の DataFrame。この時点では実行されない（§2-1）。
+        実行するのは呼び出し側の collect()。
     """
     df = read_stones(num_partitions)
-    agg = df.agg(
+    return df.agg(
         F.avg("x").alias("avg_x"), F.stddev("x").alias("std_x"),
         F.avg("y").alias("avg_y"), F.stddev("y").alias("std_y"),
     )
 
-    return agg.collect() # ← アクション。ここで初めて実行される（§2-1）
-
 
 # --- 経路2: Q2 (groupBy → Exchange hashpartitioning が出るはず) ----------
-def q2_spark_jdbc(num_partitions: int = 1) -> list[Row]:
-    """Spark で Q2(shot_order 別の平均距離)を集計する。
+def q2_spark_jdbc(num_partitions: int = 1) -> DataFrame:
+    """Spark で Q2(shot_order 別の平均距離)の DataFrame を組み立てる。
 
     Args:
         num_partitions: JDBC の並列読み込み数（§2-2）。
 
     Returns:
-        shot_order ごとの集計結果の Row リスト。
+        shot_order ごとの集計結果の DataFrame。実行は呼び出し側の collect()。
     """
-    # TODO: df.filter(...).groupBy("shot_order").agg(...).orderBy(...) を書く
-    #       NULL と負値の除外を忘れないこと(sql_notes.md §2)
-    raise NotImplementedError
+    df = read_stones(num_partitions)
+    # NULL と負値の除外は必須(sql_notes.md §2)
+    return (df.filter(F.col("shot_order").isNotNull() & (F.col("shot_order") > 0))
+              .groupBy("shot_order")
+              .agg(F.avg("distance_from_center").alias("avg_dist"))
+              .orderBy("shot_order"))
 
 
 # --- 経路2: Q3 (4段 JOIN → シャッフルが何回出るか) ----------------------
-def q3_spark_jdbc(num_partitions: int = 1) -> list[Row]:
-    """Spark で Q3(event 別 x shot_order 別の件数)を集計する。
+def q3_spark_jdbc(num_partitions: int = 1) -> DataFrame:
+    """Spark で Q3(event 別 x shot_order 別の件数)の DataFrame を組み立てる。
 
     Args:
         num_partitions: JDBC の並列読み込み数（§2-2）。
 
     Returns:
-        event 名と shot_order ごとの件数の Row リスト。
+        event 名と shot_order ごとの件数の DataFrame。実行は呼び出し側の collect()。
     """
     # TODO: shots / ends / games / events も spark.read.jdbc() で読み、
     #       .join() で繋いでから groupBy する
@@ -200,14 +202,14 @@ def q3_spark_jdbc(num_partitions: int = 1) -> list[Row]:
 
 
 # --- 経路2: Q4 (述語プッシュダウンの効果) -------------------------------
-def q4_spark_jdbc(num_partitions: int = 1) -> list[Row]:
-    """Spark で Q4(inhouse=1 に絞った座標集計)を行う。
+def q4_spark_jdbc(num_partitions: int = 1) -> DataFrame:
+    """Spark で Q4(inhouse=1 に絞った座標集計)の DataFrame を組み立てる。
 
     Args:
         num_partitions: JDBC の並列読み込み数（§2-2）。
 
     Returns:
-        集計結果の Row を1件だけ含むリスト。
+        集計結果の DataFrame。実行は呼び出し側の collect()。
     """
     # TODO: df.filter(F.col("inhouse") == 1).agg(...) を書く
     raise NotImplementedError
@@ -217,7 +219,7 @@ def q4_spark_jdbc(num_partitions: int = 1) -> list[Row]:
 def run_query(
     title: str,
     sql: str,
-    spark_fn: Callable[[int], list[Row]],
+    spark_fn: Callable[[int], DataFrame],
     partitions: tuple[int, ...] = (1, 4, 8),
 ) -> list[dict[str, Any]]:
     """1つのクエリについて経路1・経路2を測定し、結果の一致を確認する。
@@ -225,7 +227,7 @@ def run_query(
     Args:
         title: 見出しに出すクエリの説明。
         sql: 経路1(PostgreSQL)に投げる SQL。
-        spark_fn: 経路2(Spark)の集計関数。分割数を引数に取る。
+        spark_fn: 経路2(Spark)の DataFrame を組み立てる関数。分割数を引数に取る。
         partitions: 測定する JDBC 分割数のタプル。
 
     Returns:
@@ -233,11 +235,16 @@ def run_query(
     """
     print(f"\n=== {title} ===\n")
 
-    print("--- 測定 ---")
+    # 実行計画は測定対象そのものから取る。これで Q ごとに正しい計画が出る
+    print("--- 実行計画 ---")
+    spark_fn(1).explain()
+
+    print("\n--- 測定 ---")
     results = [measure("経路1: PostgreSQL", lambda: run_pg(sql))]
     for p in partitions:
+        # collect() が「アクション」。ここで初めて実行される（§2-1）
         results.append(
-            measure(f"経路2: Spark + JDBC ({p}分割)", lambda p=p: spark_fn(p))
+            measure(f"経路2: Spark + JDBC ({p}分割)", lambda p=p: spark_fn(p).collect())
         )
 
     # 結果の一致確認。目視で桁を比べず、機械的に判定する
@@ -270,10 +277,7 @@ if __name__ == "__main__":
     # 省略時は実装済みのものを全て実行する
     targets = sys.argv[1:] or list(QUERIES)
 
-    # 実行計画を先に確認 (§5-5)
-    print("--- 実行計画 (Q1) ---")
-    read_stones(1).agg(F.avg("x")).explain()
-
+    # 実行計画は run_query() が Q ごとに表示する
     for key in targets:
         if key not in QUERIES:
             print(f"\n[skip] 未知のクエリ: {key}")
