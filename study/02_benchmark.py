@@ -235,11 +235,90 @@ def q4_spark_jdbc(num_partitions: int = 1) -> DataFrame:
             )
 
 
+# --- 経路3: Spark + Parquet ---------------------
+PARQUET_DIR = "study/parquet/stones_by_event"
+
+def read_stones_parquet() -> DataFrame:
+    """Parquet から stones を読む。
+
+    Returns:
+        stones の DataFrame。num_partitions は不要
+        （ファイル分割がそのまま並列度になる）。
+    """
+    return spark.read.parquet(PARQUET_DIR)
+
+
+def q1_spark_parquet() -> DataFrame:
+    """Parquet から Q1(x, y の平均・標準偏差)の DataFrame を組み立てる。
+
+    経路2との違いは読み込み元だけ。集計部分は同じ。
+
+    Returns:
+        集計結果の DataFrame。実行は呼び出し側の collect()。
+    """
+    df = read_stones_parquet()
+
+    return df.agg(
+        F.avg("x").alias("avg_x"), F.stddev("x").alias("std_x"),
+        F.avg("y").alias("avg_y"), F.stddev("y").alias("std_y")
+    )
+
+
+def q2_spark_parquet() -> DataFrame:
+    """Parquet から Q2(shot_order 別の平均距離)の DataFrame を組み立てる。
+
+    Returns:
+        shot_order ごとの集計結果の DataFrame。実行は呼び出し側の collect()。
+    """
+    df = read_stones_parquet()
+
+    # NULL と負値の除外は必須(sql_notes.md §2)
+    return (df.filter(F.col("shot_order").isNotNull() & (F.col("shot_order") > 0))
+              .groupBy("shot_order")
+              .agg(F.avg("distance_from_center").alias("avg_dist"))
+              .orderBy("shot_order")
+            )
+
+
+def q3_spark_parquet() -> DataFrame:
+    """Parquet から Q3(event 別 x shot_order 別の件数)の DataFrame を組み立てる。
+
+    Parquet には event_name を持たせてあるため、経路2で必要だった
+    4段 JOIN が不要になる（演習書 §8-2 の設計判断が効く箇所）。
+
+    Returns:
+        大会名と shot_order ごとの件数の DataFrame。実行は呼び出し側の collect()。
+    """
+    df = read_stones_parquet()
+
+    return (df.filter(F.col("shot_order") > 0)
+              .groupBy("event_name", "shot_order")
+              .agg(F.count("*").alias("n"))
+              .orderBy("event_name", "shot_order")
+            )
+
+
+def q4_spark_parquet() -> DataFrame:
+    """Parquet から Q4(inhouse=1 に絞った座標集計)の DataFrame を組み立てる。
+
+    Returns:
+        集計結果の DataFrame。実行は呼び出し側の collect()。
+    """
+    df = read_stones_parquet()
+
+    return (df.filter(F.col("inhouse") == 1)
+              .agg(F.avg("x").alias("avg_x"),
+                   F.avg("y").alias("avg_y"), 
+                   F.count("*").alias("n"))
+            )
+
+
 # --- 測定ブロック --------------------------------
 def run_query(
     title: str,
     sql: str,
     spark_fn: Callable[[int], DataFrame],
+    parquet_fn: Callable[[], DataFrame] | None = None,
     partitions: tuple[int, ...] = (1, 4, 8),
 ) -> list[dict[str, Any]]:
     """1つのクエリについて経路1・経路2を測定し、結果の一致を確認する。
@@ -247,17 +326,25 @@ def run_query(
     Args:
         title: 見出しに出すクエリの説明。
         sql: 経路1(PostgreSQL)に投げる SQL。
-        spark_fn: 経路2(Spark)の DataFrame を組み立てる関数。分割数を引数に取る。
-        partitions: 測定する JDBC 分割数のタプル。
+        spark_fn: 経路2(Spark + JDBC)の DataFrame を組み立てる関数。分割数を引数に取る。
+        parquet_fn: 経路3(Spark + Parquet)の DataFrame を組み立てる関数。
+            None なら経路3を測定しない。Parquet はファイル分割が
+            そのまま並列度になるため、分割数は引数に取らない。
+        partitions: 測定する JDBC 分割数のタプル。経路3には適用されない。
 
     Returns:
-        measure() の戻り値のリスト。先頭が経路1、以降が経路2。
+        measure() の戻り値のリスト。先頭が経路1、以降が経路2、最後が経路3。
     """
     print(f"\n=== {title} ===\n")
 
     # 実行計画は測定対象そのものから取る。これで Q ごとに正しい計画が出る
-    print("--- 実行計画 ---")
+    print("--- 実行計画: 経路2 (JDBC) ---")
     spark_fn(1).explain()
+
+    # 経路3は読み込み元が違うため計画も変わる。特に Q3 は JOIN が消える
+    if parquet_fn is not None:
+        print("\n--- 実行計画: 経路3 (Parquet) ---")
+        parquet_fn().explain()
 
     print("\n--- 測定 ---")
     results = [measure("経路1: PostgreSQL", lambda: run_pg(sql))]
@@ -266,6 +353,9 @@ def run_query(
         results.append(
             measure(f"経路2: Spark + JDBC ({p}分割)", lambda p=p: spark_fn(p).collect())
         )
+
+    if parquet_fn is not None:
+        results.append(measure("経路3: Spark + Parquet", lambda: parquet_fn().collect()))
 
     # 結果の一致確認。目視で桁を比べず、機械的に判定する
     # 分割数を変えると最下位ビットがずれるため、完全一致(==)では比較できない
@@ -286,10 +376,10 @@ def run_query(
 # --- 実行 --------------------------------
 # 測定対象の一覧。キーはコマンドライン引数に使う
 QUERIES = {
-    "q1": ("Q1: stones の x, y の平均・標準偏差", Q1_SQL, q1_spark_jdbc),
-    "q2": ("Q2: shot_order 別の平均距離 (GROUP BY)", Q2_SQL, q2_spark_jdbc),
-    "q3": ("Q3: event 別 x shot_order 別の件数 (4段 JOIN)", Q3_SQL, q3_spark_jdbc),
-    "q4": ("Q4: inhouse=1 の座標集計 (述語プッシュダウン)", Q4_SQL, q4_spark_jdbc),
+    "q1": ("Q1: stones の x, y の平均・標準偏差", Q1_SQL, q1_spark_jdbc, q1_spark_parquet),
+    "q2": ("Q2: shot_order 別の平均距離 (GROUP BY)", Q2_SQL, q2_spark_jdbc, q2_spark_parquet),
+    "q3": ("Q3: event 別 x shot_order 別の件数 (4段 JOIN)", Q3_SQL, q3_spark_jdbc, q3_spark_parquet),
+    "q4": ("Q4: inhouse=1 の座標集計 (述語プッシュダウン)", Q4_SQL, q4_spark_jdbc, q4_spark_parquet),
 }
 
 if __name__ == "__main__":
@@ -302,13 +392,13 @@ if __name__ == "__main__":
         if key not in QUERIES:
             print(f"\n[skip] 未知のクエリ: {key}")
             continue
-        title, sql, spark_fn = QUERIES[key]
+        title, sql, spark_fn, parquet_fn = QUERIES[key]
         # 未実装のものは経路1を測る前にスキップする(見出しの二重表示を避ける)。
         # 関数の中身に NotImplementedError があるかで判定する
         if "NotImplementedError" in inspect.getsource(spark_fn):
             print(f"\n=== {title} ===")
             print(f"[未実装] {spark_fn.__name__} を実装してください")
             continue
-        run_query(title, sql, spark_fn, partitions=(1, 2, 4, 8, 16, 32))
+        run_query(title, sql, spark_fn, parquet_fn, partitions=(4, 16))
 
     spark.stop()  # SparkSession を終了

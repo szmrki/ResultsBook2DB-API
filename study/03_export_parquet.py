@@ -63,7 +63,7 @@ def build_stones_enriched() -> DataFrame:
     分析側が JOIN 不要で使えるよう、大会情報を非正規化して持たせる。
 
     Returns:
-        stones の全列 + event_id + category + game_id を持つ DataFrame。
+        stones の全列 + event_id + category + event_name + game_id を持つ DataFrame。
     """
 
     # §6-6の探索結果より、stonesの読み込みは16分割が最速
@@ -84,6 +84,7 @@ def build_stones_enriched() -> DataFrame:
                 stones["x"], stones["y"], stones["distance_from_center"],
                 stones["inhouse"], stones["insheet"], stones["shot_order"],
                 events["id"].alias("event_id"),
+                events["name"].alias("event_name"),
                 events["category"],
                 games["id"].alias("game_id"),   # 小ファイル問題の検証用（2,241件）
             ))
