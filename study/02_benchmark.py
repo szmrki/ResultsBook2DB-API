@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
+import duckdb
+
 load_dotenv()
 
 # --- 接続情報 --------------------------------
@@ -313,12 +315,59 @@ def q4_spark_parquet() -> DataFrame:
             )
 
 
+# --- 経路4: DuckDB + Parquet
+def run_duckdb(sql: str) -> list[tuple]:
+    """ DuckDB に SQL を投げて全行取得する。
+    
+    Args:
+        sql: 実行する SELECT 文。
+
+    Returns:
+        結果行のリスト。各行はカラム値のタプル。
+    """
+    # DuckDB には接続の概念がないため run_pg と異なり毎回の接続処理は必要ない
+    return duckdb.sql(sql).fetchall()
+
+
+# --- 各クエリの SQL --------------------------------
+PARQUET_GLOB = "'study/parquet/stones_by_event/**/*.parquet'"
+
+Q1_DUCK = f"""
+    SELECT AVG(x) AS avg_x, STDDEV(x) AS std_x,
+           AVG(y) AS avg_y, STDDEV(y) AS std_y
+    FROM {PARQUET_GLOB}
+"""
+
+Q2_DUCK = f"""
+    SELECT shot_order, AVG(distance_from_center) AS avg_dist
+    FROM {PARQUET_GLOB}
+    WHERE shot_order IS NOT NULL AND shot_order > 0
+    GROUP BY shot_order ORDER BY shot_order
+"""
+
+# Q3: event 別 x shot_order 別の件数
+Q3_DUCK = f"""
+    SELECT event_name, shot_order, COUNT(*) AS n
+    FROM {PARQUET_GLOB}
+    WHERE shot_order > 0
+    GROUP BY event_name, shot_order
+    ORDER BY event_name, shot_order
+"""
+
+# Q4: inhouse=1 に絞った座標集計(述語プッシュダウン)
+Q4_DUCK = f"""
+    SELECT AVG(x) AS avg_x, AVG(y) AS avg_y, COUNT(*) AS n
+    FROM {PARQUET_GLOB}
+    WHERE inhouse = 1
+"""
+
 # --- 測定ブロック --------------------------------
 def run_query(
     title: str,
     sql: str,
     spark_fn: Callable[[int], DataFrame],
     parquet_fn: Callable[[], DataFrame] | None = None,
+    duck_sql: str | None = None,
     partitions: tuple[int, ...] = (1, 4, 8),
 ) -> list[dict[str, Any]]:
     """1つのクエリについて経路1・経路2を測定し、結果の一致を確認する。
@@ -330,6 +379,7 @@ def run_query(
         parquet_fn: 経路3(Spark + Parquet)の DataFrame を組み立てる関数。
             None なら経路3を測定しない。Parquet はファイル分割が
             そのまま並列度になるため、分割数は引数に取らない。
+        duck_sql: 経路4(DuckDB + Parquet) に投げるSQL。
         partitions: 測定する JDBC 分割数のタプル。経路3には適用されない。
 
     Returns:
@@ -357,6 +407,9 @@ def run_query(
     if parquet_fn is not None:
         results.append(measure("経路3: Spark + Parquet", lambda: parquet_fn().collect()))
 
+    if duck_sql is not None:
+        results.append(measure("経路4: DuckDB + Parquet", lambda: run_duckdb(duck_sql)))
+
     # 結果の一致確認。目視で桁を比べず、機械的に判定する
     # 分割数を変えると最下位ビットがずれるため、完全一致(==)では比較できない
     print("\n--- 結果の一致確認 ---")
@@ -376,10 +429,10 @@ def run_query(
 # --- 実行 --------------------------------
 # 測定対象の一覧。キーはコマンドライン引数に使う
 QUERIES = {
-    "q1": ("Q1: stones の x, y の平均・標準偏差", Q1_SQL, q1_spark_jdbc, q1_spark_parquet),
-    "q2": ("Q2: shot_order 別の平均距離 (GROUP BY)", Q2_SQL, q2_spark_jdbc, q2_spark_parquet),
-    "q3": ("Q3: event 別 x shot_order 別の件数 (4段 JOIN)", Q3_SQL, q3_spark_jdbc, q3_spark_parquet),
-    "q4": ("Q4: inhouse=1 の座標集計 (述語プッシュダウン)", Q4_SQL, q4_spark_jdbc, q4_spark_parquet),
+    "q1": ("Q1: stones の x, y の平均・標準偏差", Q1_SQL, q1_spark_jdbc, q1_spark_parquet, Q1_DUCK),
+    "q2": ("Q2: shot_order 別の平均距離 (GROUP BY)", Q2_SQL, q2_spark_jdbc, q2_spark_parquet, Q2_DUCK),
+    "q3": ("Q3: event 別 x shot_order 別の件数 (4段 JOIN)", Q3_SQL, q3_spark_jdbc, q3_spark_parquet, Q3_DUCK),
+    "q4": ("Q4: inhouse=1 の座標集計 (述語プッシュダウン)", Q4_SQL, q4_spark_jdbc, q4_spark_parquet, Q4_DUCK),
 }
 
 if __name__ == "__main__":
@@ -392,13 +445,13 @@ if __name__ == "__main__":
         if key not in QUERIES:
             print(f"\n[skip] 未知のクエリ: {key}")
             continue
-        title, sql, spark_fn, parquet_fn = QUERIES[key]
+        title, sql, spark_fn, parquet_fn, duck_sql = QUERIES[key]
         # 未実装のものは経路1を測る前にスキップする(見出しの二重表示を避ける)。
         # 関数の中身に NotImplementedError があるかで判定する
         if "NotImplementedError" in inspect.getsource(spark_fn):
             print(f"\n=== {title} ===")
             print(f"[未実装] {spark_fn.__name__} を実装してください")
             continue
-        run_query(title, sql, spark_fn, parquet_fn, partitions=(4, 16))
+        run_query(title, sql, spark_fn, parquet_fn, duck_sql, partitions=(4, 16))
 
     spark.stop()  # SparkSession を終了

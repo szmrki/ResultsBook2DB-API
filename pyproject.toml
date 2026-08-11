@@ -5,6 +5,7 @@ description = "カーリング国際大会の実試合データを提供する R
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "duckdb>=1.5.5",
     "fastapi>=0.136.1",
     "google-genai>=2.8.0",
     "mcp[cli]>=1.28.1",
