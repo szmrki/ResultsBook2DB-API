@@ -4,9 +4,10 @@ services:
     build: . # このディレクトリの Dockerfile を使ってイメージをビルド
     container_name: rb2db-api # コンテナの名前（docker ps で表示される）
     ports:
-      - "127.0.0.1:8000:8000"   
-        # サーバーの localhost のみ
-        # 現状は研究室サーバにアクセスできるユーザからのsshトンネルによるアクセスのみを想定
+      - "127.0.0.1:8000:8000"
+        # サーバーの localhost のみに公開する。
+        # 外部からのアクセスは下の cloudflared 経由（Cloudflare Access で認証）に限られ、
+        # このポートが直接インターネットに晒されることはない。
     environment:
       DATABASE_URL_MD: ${DATABASE_URL_MD}
       DATABASE_URL_FOUR: ${DATABASE_URL_FOUR}
@@ -26,15 +27,15 @@ services:
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # ── MCP サーバー ──────────────────────────────────────────────
-  # 研究室メンバーの AI ツールから read-only SQL で分析するためのサーバー。
+  # AI ツールから read-only SQL で分析するためのサーバー。
   # api と同一イメージ（同じ Dockerfile）を使い、command だけ差し替えて起動する。
   mcp:
     build: . # api と同じ Dockerfile / イメージ
     container_name: rb2db-mcp
     ports:
       - "127.0.0.1:8100:8100"
-        # api と同様、研究室サーバーの localhost のみ公開。
-        # 各メンバーは SSH ポートフォワーディング経由で接続する。
+        # api と同様、サーバーの localhost のみに公開する。
+        # cloudflared 経由の公開URLに接続する。
     environment:
       # MCP サーバーは read-only 専用ロールで接続する（書き込み可能なURLは渡さない）。
       DATABASE_URL_MD_RO: ${DATABASE_URL_MD_RO}
@@ -54,6 +55,37 @@ services:
         max-size: "10m"
         max-file: "3"
     command: uv run python -m app.mcp.server
+
+  # ── Cloudflare Tunnel（コネクタ）──────────────────────────────
+  # サーバーから Cloudflare へ「外向きに」接続を張り続けるコンテナ。
+  # 外部からのリクエストは Cloudflare → この接続 → api:8000 / mcp:8100 と流れる。
+  # 外部からのポートを一切開かずに公開できる（インバウンドの穴がゼロ）。
+  #
+  # 転送先のルートと認証ポリシー（Cloudflare Access）はダッシュボード側に保存され、
+  # このコンテナに渡すのはトンネルを識別するトークン1本だけ。
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: rb2db-cloudflared
+    # --no-autoupdate: コンテナ内での自動更新を止める。
+    #   更新は image の pull で行う（自動更新は稼働中の再起動を招くため無効化が定石）
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    environment:
+      # ダッシュボードで発行したトンネルトークン。.env に置く（コミット禁止）
+      CF_TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN}
+    depends_on:
+      # 転送先が起動してからコネクタを上げる（起動直後の 502 を避ける）
+      - api
+      - mcp
+    # ports は書かない。
+    # このコンテナは外向きの接続を張るだけで、待ち受けるポートを持たないため。
+    restart: unless-stopped
+      # トンネルが落ちると外部からアクセスできなくなるため自動再起動する。
+      # ただし手動で止めた時（down）は再起動しない unless-stopped を使う。
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── PostgreSQL ────────────────────────────────────────────────
   db:
