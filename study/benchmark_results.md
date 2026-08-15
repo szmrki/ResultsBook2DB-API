@@ -538,4 +538,4 @@ Q3 で経路2→経路3が 3.6倍改善したのは、Parquet が速いからで
 - [x] Parquet の生成（演習書 §8-2）— パーティション設計と圧縮形式を比較
 - [x] 経路3: Spark + Parquet（演習書 §8-4）
 - [x] 経路4: DuckDB + Parquet（演習書 §8-6）
-- [ ] 全て揃ったら `memo/olap_analytics_plan.md` に結論を反映
+- [×] 全て揃ったら `memo/olap_analytics_plan.md` に結論を反映
