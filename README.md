@@ -71,11 +71,14 @@ REST API に加えて、AIコーディングツール（Claude Code 等）から
 
 ## 技術スタック
 
-- Python 3.12 / FastAPI
-- SQLAlchemy（ORM）
-- PostgreSQL 18
-- Docker / docker-compose
-- uv（パッケージ管理）
+| 領域 | 使用技術 |
+|---|---|
+| 言語 / フレームワーク | Python 3.12 / FastAPI |
+| データベース | PostgreSQL 18 / SQLAlchemy（ORM） |
+| AI ツール連携 | MCP（Model Context Protocol） |
+| インフラ | Docker / docker-compose |
+| 公開・認証 | Cloudflare Tunnel / Access |
+| 開発環境 | uv（パッケージ管理）/ Ruff / mypy / pytest |
 
 ## データの取り扱いと免責事項
 
