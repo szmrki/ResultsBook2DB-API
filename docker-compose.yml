@@ -4,9 +4,10 @@ services:
     build: . # このディレクトリの Dockerfile を使ってイメージをビルド
     container_name: rb2db-api # コンテナの名前（docker ps で表示される）
     ports:
-      - "127.0.0.1:8000:8000"   
-        # サーバーの localhost のみ
-        # 現状は研究室サーバにアクセスできるユーザからのsshトンネルによるアクセスのみを想定
+      - "127.0.0.1:8000:8000"
+        # サーバーの localhost のみに公開する。
+        # 外部からのアクセスは下の cloudflared 経由（Cloudflare Access で認証）に限られ、
+        # このポートが直接インターネットに晒されることはない。
     environment:
       DATABASE_URL_MD: ${DATABASE_URL_MD}
       DATABASE_URL_FOUR: ${DATABASE_URL_FOUR}
@@ -26,15 +27,15 @@ services:
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # ── MCP サーバー ──────────────────────────────────────────────
-  # 研究室メンバーの AI ツールから read-only SQL で分析するためのサーバー。
+  # AI ツールから read-only SQL で分析するためのサーバー。
   # api と同一イメージ（同じ Dockerfile）を使い、command だけ差し替えて起動する。
   mcp:
     build: . # api と同じ Dockerfile / イメージ
     container_name: rb2db-mcp
     ports:
       - "127.0.0.1:8100:8100"
-        # api と同様、研究室サーバーの localhost のみ公開。
-        # 各メンバーは SSH ポートフォワーディング経由で接続する。
+        # api と同様、サーバーの localhost のみに公開する。
+        # cloudflared 経由の公開URLに接続する。
     environment:
       # MCP サーバーは read-only 専用ロールで接続する（書き込み可能なURLは渡さない）。
       DATABASE_URL_MD_RO: ${DATABASE_URL_MD_RO}
