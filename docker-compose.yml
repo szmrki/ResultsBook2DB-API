@@ -55,6 +55,37 @@ services:
         max-file: "3"
     command: uv run python -m app.mcp.server
 
+  # ── Cloudflare Tunnel（コネクタ）──────────────────────────────
+  # サーバーから Cloudflare へ「外向きに」接続を張り続けるコンテナ。
+  # 外部からのリクエストは Cloudflare → この接続 → api:8000 / mcp:8100 と流れる。
+  # 外部からのポートを一切開かずに公開できる（インバウンドの穴がゼロ）。
+  #
+  # 転送先のルートと認証ポリシー（Cloudflare Access）はダッシュボード側に保存され、
+  # このコンテナに渡すのはトンネルを識別するトークン1本だけ。
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: rb2db-cloudflared
+    # --no-autoupdate: コンテナ内での自動更新を止める。
+    #   更新は image の pull で行う（自動更新は稼働中の再起動を招くため無効化が定石）
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    environment:
+      # ダッシュボードで発行したトンネルトークン。.env に置く（コミット禁止）
+      CF_TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN}
+    depends_on:
+      # 転送先が起動してからコネクタを上げる（起動直後の 502 を避ける）
+      - api
+      - mcp
+    # ports は書かない。
+    # このコンテナは外向きの接続を張るだけで、待ち受けるポートを持たないため。
+    restart: unless-stopped
+      # トンネルが落ちると外部からアクセスできなくなるため自動再起動する。
+      # ただし手動で止めた時（down）は再起動しない unless-stopped を使う。
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # ── PostgreSQL ────────────────────────────────────────────────
   db:
     image: postgres:18 # DockerHub の公式 PostgreSQL 18 イメージを使用
