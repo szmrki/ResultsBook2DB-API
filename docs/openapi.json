@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ResultsBook2DB API",
-    "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n> API 本体は研究室内限定公開です。\n",
-    "version": "1.4.0"
+    "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n## データを扱ううえでの前提\n\n1. **`ends` の `score_red` / `score_yellow` の `null` は「0点」ではありません。**\n   コンシード（投了）により**実施されなかったエンド**を表します。\n   0 点として集計すると誤った結論になるため、集計時は除外してください。\n\n2. **`stones` の `shot_order` には `null` と負値が混ざります。**\n   負値はパース由来の異常値のため、集計から除外してください。\n\n3. **`stones` は1投球につき、その投球後に盤面へ残る全ストーン（最大16行）を持ちます。**\n   「投げた石の着弾点」を得るには絞り込みが必要です。\n\n4. **`stones` の座標はメートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。\n\n利用者向けの詳細な注意点・スキーマ解説は、API 本体の `GET /v1/notes` から取得できます\n（研究室内限定公開）。\n\n> API 本体は研究室内限定公開です。\n",
+    "version": "1.5.0"
   },
   "paths": {
     "/v1/four/events": {
@@ -839,8 +839,8 @@
         "tags": [
           "four / ends"
         ],
-        "summary": "List Ends",
-        "description": "エンド一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    game_id: 試合IDで絞り込み（省略可）\n    number: エンド番号で絞り込み（省略可）\n    color_hammer: ハンマー色で絞り込み（\"red\" / \"yellow\"、省略可）\n    is_power_play: パワープレイフラグで絞り込み（0 / 1、md のみ有効、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse: 総件数・ページネーション情報・エンドリスト",
+        "summary": "エンド一覧を取得",
+        "description": "エンドの一覧を返す。\n\n> **注意: `score_red` / `score_yellow` の `null` は 0 点ではありません。**\n> コンシード（投了）により**実施されなかったエンド**を表します。終盤エンドほど多く、0 点として集計すると「終盤は得点が少ない」という誤った結論になります。平均得点などを出す際は、これらの行を分母から除外してください。\n\n> ブランクエンド（`score_red = 0` かつ `score_yellow = 0`）の後のハンマー（後攻権）の扱いは **md と four でルールが異なります**。",
         "operationId": "list_ends_v1_four_ends_get",
         "parameters": [
           {
@@ -998,8 +998,8 @@
         "tags": [
           "four / ends"
         ],
-        "summary": "Get End",
-        "description": "エンドを1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    end_id: 取得するエンドの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    End: エンド情報\n\nRaises:\n    HTTPException: 指定 ID のエンドが存在しない場合（404）",
+        "summary": "エンドを1件取得",
+        "description": "エンドを1件返す。\n\n> `score_red` / `score_yellow` が `null` の場合、それは 0 点ではなく**コンシードにより実施されなかったエンド**を意味します。",
         "operationId": "get_end_v1_four_ends__end_id__get",
         "parameters": [
           {
@@ -1041,8 +1041,8 @@
         "tags": [
           "four / ends"
         ],
-        "summary": "List End Shots",
-        "description": "エンドに属するショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    end_id: エンド ID\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト\n\nRaises:\n    HTTPException: 指定 ID のエンドが存在しない場合（404）",
+        "summary": "エンドに属するショット一覧を取得",
+        "description": "指定エンドに属するショットの一覧を返す。\n\n> `percent_score` は 0/25/50/75/100 の**離散値**です（連続値ではありません）。`type` が `Through` / `no statistics` のショットでは成功率が定義できず `null` になります。",
         "operationId": "list_end_shots_v1_four_ends__end_id__shots_get",
         "parameters": [
           {
@@ -1129,8 +1129,8 @@
         "tags": [
           "four / shots"
         ],
-        "summary": "List Shots",
-        "description": "ショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。shots→ends→games を辿って絞る）\n    category: 大会カテゴリで絞り込み（例: \"Men\" / \"Women\"、省略可。\n        shots→ends→games→events を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可）\n    number: ショット番号で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    type: ショットタイプで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    turn: 投球のターン（回転）方向で絞り込み（\"cw\" / \"ccw\"、省略可）\n    percent_score: ショット評価スコアで絞り込み（省略可）。\n        カンマ区切りで複数指定できる（例: \"75,100\" で成功ショットのみ）。\n        percent_score は 0 / 25 / 50 / 75 / 100 の5段階固定値で、\n        それ以外の値を指定すると 422 を返す。\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト",
+        "summary": "ショット一覧を取得",
+        "description": "ショットの一覧を返す。\n\n> **`percent_score` は 0/25/50/75/100 の離散値**です（連続値ではありません）。高い値に偏った分布のため、平均値だけでの比較には注意してください。\n\n> `percent_score` / `turn` の `null` はランダムな欠損ではなく、`type` が `Through` / `no statistics` の**成功率を定義できないショット**に対応します。",
         "operationId": "list_shots_v1_four_shots_get",
         "parameters": [
           {
@@ -1368,8 +1368,8 @@
         "tags": [
           "four / shots"
         ],
-        "summary": "Get Shot",
-        "description": "ショットを1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    shot_id: 取得するショットの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    ShotResponse: ショット情報\n\nRaises:\n    HTTPException: 指定 ID のショットが存在しない場合（404）",
+        "summary": "ショットを1件取得",
+        "description": "ショットを1件返す。\n\n> `percent_score` は 0/25/50/75/100 の離散値です。`type` が `Through` / `no statistics` の場合は成功率が定義できず `null` になります。",
         "operationId": "get_shot_v1_four_shots__shot_id__get",
         "parameters": [
           {
@@ -1411,8 +1411,8 @@
         "tags": [
           "four / shots"
         ],
-        "summary": "List Shot Stones",
-        "description": "ショット後のストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    shot_id: ショット ID\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト\n\nRaises:\n    HTTPException: 指定 ID のショットが存在しない場合（404）",
+        "summary": "ショット後のストーン座標一覧を取得",
+        "description": "指定ショットの**投球後に盤面に残る全ストーン**（最大16行）を返す。\n\n> **この一覧は「投げた石の着弾点」ではありません。**その投球で投げられた石は、`shot_order` がこのショットの `number` と一致する1行です。区別せず集計すると着弾分布が歪みます。\n\n> `shot_order` の `null` と負値は異常値なので除外してください。座標は**メートル単位**（`x=0` がセンターライン）。",
         "operationId": "list_shot_stones_v1_four_shots__shot_id__stones_get",
         "parameters": [
           {
@@ -1499,8 +1499,8 @@
         "tags": [
           "four / stones"
         ],
-        "summary": "List Stones",
-        "description": "ストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。stones→shots→ends→games を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。stones→shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可。stones→shots を辿って絞る）\n    shot_id: 投球IDで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）\n    shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト",
+        "summary": "ストーン座標一覧を取得",
+        "description": "ストーン座標の一覧を返す。**1投球につき、その投球後に盤面に残る全ストーン（最大16行）**が記録されている点に注意。\n\n> **`shot_order` には `null` と負値が混ざります。**負値はパース由来の異常値なので、集計時は `shot_order` が `null` でなく正の値の行だけを使ってください。\n\n> **「その投球で投げられた石（着弾点）」を知りたい場合、この一覧をそのまま集計してはいけません。**盤面に残る他の石が混ざり、着弾分布が大きく歪みます。着弾点は `shot_order` が親ショットの `number` と一致する1行です。\n\n> 座標は**メートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。",
         "operationId": "list_stones_v1_four_stones_get",
         "parameters": [
           {
@@ -1690,8 +1690,8 @@
         "tags": [
           "four / stones"
         ],
-        "summary": "Get Stone",
-        "description": "ストーン座標を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    stone_id: 取得するストーンの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    StoneResponse: ストーン座標情報\n\nRaises:\n    HTTPException: 指定 ID のストーンが存在しない場合（404）",
+        "summary": "ストーン座標を1件取得",
+        "description": "ストーン座標を1件返す。\n\n> 座標は**メートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。`shot_order` が `null` または負値の場合は異常値です。",
         "operationId": "get_stone_v1_four_stones__stone_id__get",
         "parameters": [
           {
@@ -1733,8 +1733,8 @@
         "tags": [
           "four / lsds"
         ],
-        "summary": "List Lsds",
-        "description": "LSD 一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    game_id: 試合IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[LsdResponse]: 総件数・ページネーション情報・LSD リスト",
+        "summary": "LSD 一覧を取得",
+        "description": "LSD（Last Stone Draw）の一覧を返す。\n\n> **`player_name` には表記ゆれを含む行があります。**選手名での絞り込み・集計・他テーブルとの突合では、同一選手が別名として分かれることがあるため正規化してから扱ってください。",
         "operationId": "list_lsds_v1_four_lsds_get",
         "parameters": [
           {
@@ -1860,8 +1860,8 @@
         "tags": [
           "four / lsds"
         ],
-        "summary": "Get Lsd",
-        "description": "LSD を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    lsd_id: 取得する LSD の ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    LsdResponse: LSD 情報\n\nRaises:\n    HTTPException: 指定 ID の LSD が存在しない場合（404）",
+        "summary": "LSD を1件取得",
+        "description": "LSD（Last Stone Draw）を1件返す。\n\n> `player_name` には表記ゆれを含む場合があります。選手名で突合する際は正規化してから扱ってください。",
         "operationId": "get_lsd_v1_four_lsds__lsd_id__get",
         "parameters": [
           {
@@ -3119,8 +3119,8 @@
         "tags": [
           "md / ends"
         ],
-        "summary": "List Ends",
-        "description": "エンド一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    game_id: 試合IDで絞り込み（省略可）\n    number: エンド番号で絞り込み（省略可）\n    color_hammer: ハンマー色で絞り込み（\"red\" / \"yellow\"、省略可）\n    is_power_play: パワープレイフラグで絞り込み（0 / 1、md のみ有効、省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse: 総件数・ページネーション情報・エンドリスト",
+        "summary": "エンド一覧を取得",
+        "description": "エンドの一覧を返す。\n\n> **注意: `score_red` / `score_yellow` の `null` は 0 点ではありません。**\n> コンシード（投了）により**実施されなかったエンド**を表します。終盤エンドほど多く、0 点として集計すると「終盤は得点が少ない」という誤った結論になります。平均得点などを出す際は、これらの行を分母から除外してください。\n\n> ブランクエンド（`score_red = 0` かつ `score_yellow = 0`）の後のハンマー（後攻権）の扱いは **md と four でルールが異なります**。",
         "operationId": "list_ends_v1_md_ends_get",
         "parameters": [
           {
@@ -3278,8 +3278,8 @@
         "tags": [
           "md / ends"
         ],
-        "summary": "Get End",
-        "description": "エンドを1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    end_id: 取得するエンドの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    End: エンド情報\n\nRaises:\n    HTTPException: 指定 ID のエンドが存在しない場合（404）",
+        "summary": "エンドを1件取得",
+        "description": "エンドを1件返す。\n\n> `score_red` / `score_yellow` が `null` の場合、それは 0 点ではなく**コンシードにより実施されなかったエンド**を意味します。",
         "operationId": "get_end_v1_md_ends__end_id__get",
         "parameters": [
           {
@@ -3321,8 +3321,8 @@
         "tags": [
           "md / ends"
         ],
-        "summary": "List End Shots",
-        "description": "エンドに属するショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    end_id: エンド ID\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト\n\nRaises:\n    HTTPException: 指定 ID のエンドが存在しない場合（404）",
+        "summary": "エンドに属するショット一覧を取得",
+        "description": "指定エンドに属するショットの一覧を返す。\n\n> `percent_score` は 0/25/50/75/100 の**離散値**です（連続値ではありません）。`type` が `Through` / `no statistics` のショットでは成功率が定義できず `null` になります。",
         "operationId": "list_end_shots_v1_md_ends__end_id__shots_get",
         "parameters": [
           {
@@ -3409,8 +3409,8 @@
         "tags": [
           "md / shots"
         ],
-        "summary": "List Shots",
-        "description": "ショット一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。shots→ends→games を辿って絞る）\n    category: 大会カテゴリで絞り込み（例: \"Men\" / \"Women\"、省略可。\n        shots→ends→games→events を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可）\n    number: ショット番号で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    type: ショットタイプで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    turn: 投球のターン（回転）方向で絞り込み（\"cw\" / \"ccw\"、省略可）\n    percent_score: ショット評価スコアで絞り込み（省略可）。\n        カンマ区切りで複数指定できる（例: \"75,100\" で成功ショットのみ）。\n        percent_score は 0 / 25 / 50 / 75 / 100 の5段階固定値で、\n        それ以外の値を指定すると 422 を返す。\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[ShotResponse]: 総件数・ページネーション情報・ショットリスト",
+        "summary": "ショット一覧を取得",
+        "description": "ショットの一覧を返す。\n\n> **`percent_score` は 0/25/50/75/100 の離散値**です（連続値ではありません）。高い値に偏った分布のため、平均値だけでの比較には注意してください。\n\n> `percent_score` / `turn` の `null` はランダムな欠損ではなく、`type` が `Through` / `no statistics` の**成功率を定義できないショット**に対応します。",
         "operationId": "list_shots_v1_md_shots_get",
         "parameters": [
           {
@@ -3648,8 +3648,8 @@
         "tags": [
           "md / shots"
         ],
-        "summary": "Get Shot",
-        "description": "ショットを1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    shot_id: 取得するショットの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    ShotResponse: ショット情報\n\nRaises:\n    HTTPException: 指定 ID のショットが存在しない場合（404）",
+        "summary": "ショットを1件取得",
+        "description": "ショットを1件返す。\n\n> `percent_score` は 0/25/50/75/100 の離散値です。`type` が `Through` / `no statistics` の場合は成功率が定義できず `null` になります。",
         "operationId": "get_shot_v1_md_shots__shot_id__get",
         "parameters": [
           {
@@ -3691,8 +3691,8 @@
         "tags": [
           "md / shots"
         ],
-        "summary": "List Shot Stones",
-        "description": "ショット後のストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    shot_id: ショット ID\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト\n\nRaises:\n    HTTPException: 指定 ID のショットが存在しない場合（404）",
+        "summary": "ショット後のストーン座標一覧を取得",
+        "description": "指定ショットの**投球後に盤面に残る全ストーン**（最大16行）を返す。\n\n> **この一覧は「投げた石の着弾点」ではありません。**その投球で投げられた石は、`shot_order` がこのショットの `number` と一致する1行です。区別せず集計すると着弾分布が歪みます。\n\n> `shot_order` の `null` と負値は異常値なので除外してください。座標は**メートル単位**（`x=0` がセンターライン）。",
         "operationId": "list_shot_stones_v1_md_shots__shot_id__stones_get",
         "parameters": [
           {
@@ -3779,8 +3779,8 @@
         "tags": [
           "md / stones"
         ],
-        "summary": "List Stones",
-        "description": "ストーン座標一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可。stones→shots→ends→games を辿って絞る）\n    game_id: 試合IDで絞り込み（省略可。stones→shots→ends を辿って絞る）\n    end_id: エンドIDで絞り込み（省略可。stones→shots を辿って絞る）\n    shot_id: 投球IDで絞り込み（省略可）\n    color: ストーン色で絞り込み（\"red\" / \"yellow\"、省略可）\n    inhouse: ハウス内フラグで絞り込み（0 / 1、省略可）\n    shot_order: 投球順で絞り込み（省略可。four DB のみ、md DB では NULL）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[StoneResponse]: 総件数・ページネーション情報・ストーンリスト",
+        "summary": "ストーン座標一覧を取得",
+        "description": "ストーン座標の一覧を返す。**1投球につき、その投球後に盤面に残る全ストーン（最大16行）**が記録されている点に注意。\n\n> **`shot_order` には `null` と負値が混ざります。**負値はパース由来の異常値なので、集計時は `shot_order` が `null` でなく正の値の行だけを使ってください。\n\n> **「その投球で投げられた石（着弾点）」を知りたい場合、この一覧をそのまま集計してはいけません。**盤面に残る他の石が混ざり、着弾分布が大きく歪みます。着弾点は `shot_order` が親ショットの `number` と一致する1行です。\n\n> 座標は**メートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。",
         "operationId": "list_stones_v1_md_stones_get",
         "parameters": [
           {
@@ -3970,8 +3970,8 @@
         "tags": [
           "md / stones"
         ],
-        "summary": "Get Stone",
-        "description": "ストーン座標を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    stone_id: 取得するストーンの ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    StoneResponse: ストーン座標情報\n\nRaises:\n    HTTPException: 指定 ID のストーンが存在しない場合（404）",
+        "summary": "ストーン座標を1件取得",
+        "description": "ストーン座標を1件返す。\n\n> 座標は**メートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。`shot_order` が `null` または負値の場合は異常値です。",
         "operationId": "get_stone_v1_md_stones__stone_id__get",
         "parameters": [
           {
@@ -4013,8 +4013,8 @@
         "tags": [
           "md / lsds"
         ],
-        "summary": "List Lsds",
-        "description": "LSD 一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    game_id: 試合IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可）\n    player_name: 選手名の部分一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[LsdResponse]: 総件数・ページネーション情報・LSD リスト",
+        "summary": "LSD 一覧を取得",
+        "description": "LSD（Last Stone Draw）の一覧を返す。\n\n> **`player_name` には表記ゆれを含む行があります。**選手名での絞り込み・集計・他テーブルとの突合では、同一選手が別名として分かれることがあるため正規化してから扱ってください。",
         "operationId": "list_lsds_v1_md_lsds_get",
         "parameters": [
           {
@@ -4140,8 +4140,8 @@
         "tags": [
           "md / lsds"
         ],
-        "summary": "Get Lsd",
-        "description": "LSD を1件取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    lsd_id: 取得する LSD の ID\n    db: DB セッション（依存性注入）\n\nReturns:\n    LsdResponse: LSD 情報\n\nRaises:\n    HTTPException: 指定 ID の LSD が存在しない場合（404）",
+        "summary": "LSD を1件取得",
+        "description": "LSD（Last Stone Draw）を1件返す。\n\n> `player_name` には表記ゆれを含む場合があります。選手名で突合する際は正規化してから扱ってください。",
         "operationId": "get_lsd_v1_md_lsds__lsd_id__get",
         "parameters": [
           {
@@ -4551,6 +4551,75 @@
                   "$ref": "#/components/schemas/RosterMdResponse"
                 }
               }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notes": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "前提知識ドキュメントの一覧",
+        "description": "この API のデータを正しく扱うための前提知識ドキュメントの一覧を返す。\n\n本文は `GET /v1/notes/{doc}` で取得できる。\n\n**分析目的でこの API を使う場合は、集計を書く前に目を通すことを推奨する。**",
+        "operationId": "list_notes_v1_notes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NoteResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Notes V1 Notes Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notes/{doc}": {
+      "get": {
+        "tags": [
+          "notes"
+        ],
+        "summary": "前提知識ドキュメントの本文",
+        "description": "前提知識ドキュメントの本文を Markdown（`text/markdown`）で返す。\n\n指定できる文書名は `GET /v1/notes` の一覧を参照。",
+        "operationId": "get_note_v1_notes__doc__get",
+        "parameters": [
+          {
+            "name": "doc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/NoteDoc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/markdown": {}
             }
           },
           "422": {
@@ -5362,6 +5431,40 @@
         ],
         "title": "LsdSortField",
         "description": "lsds テーブルのソート可能カラム。"
+      },
+      "NoteDoc": {
+        "type": "string",
+        "enum": [
+          "schema",
+          "sql-notes",
+          "metrics"
+        ],
+        "title": "NoteDoc",
+        "description": "配信する前提知識ドキュメントの名前。\n\nEnum にしておくことで、定義外の文書名は FastAPI が 422 で弾いてくれる\n（= 任意のファイルパスを URL から渡せないので、パストラバーサル対策も兼ねる）。"
+      },
+      "NoteResponse": {
+        "properties": {
+          "doc": {
+            "type": "string",
+            "title": "Doc"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc",
+          "description",
+          "url"
+        ],
+        "title": "NoteResponse",
+        "description": "前提知識ドキュメント一覧の1件分。\n\nAttributes:\n    doc: 文書名（\"schema\" / \"sql-notes\" / \"metrics\"）\n    description: その文書に何が書いてあるかの一行説明\n    url: 本文を取得するための URL"
       },
       "OrderDirection": {
         "type": "string",

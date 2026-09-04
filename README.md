@@ -41,6 +41,15 @@
 | GET | `/v1/four/rosters` | 出場選手一覧 |
 | GET | `/v1/four/rosters/{id}` | 出場選手1件 |
 
+md / four のどちらにも属さない共通エンドポイント:
+
+| メソッド | URL | 説明 |
+|---|---|---|
+| GET | `/v1/notes` | 前提知識ドキュメントの一覧 |
+| GET | `/v1/notes/{doc}` | 前提知識ドキュメントの本文（Markdown） |
+
+詳細な注意点・スキーマ解説は `GET /v1/notes` から取得できます。
+
 ### 共通クエリパラメータ
 
 | パラメータ | デフォルト | 説明 |
@@ -65,7 +74,8 @@ REST API に加えて、AIコーディングツール（Claude Code 等）から
 - `run_query(sql, db)` — 任意の read-only SQL を実行（`SELECT` / `WITH` のみ）
 - `get_schema(db)` — テーブル定義・カラムの意味・md/four 差分を取得
 
-スキーマ解説・SQL上の注意点・定義済みメトリクスの定義は MCP リソースとして同梱しています。
+スキーマ解説・SQL上の注意点・集計定義は MCP リソースとして同梱しています。
+同じ内容は REST API の `GET /v1/notes/{doc}` からも取得できます。
 
 > MCP サーバー本体も研究室内限定公開です。
 
