@@ -77,9 +77,28 @@ events  →  games  →  ends  →  shots  →  stones
 | turn | STRING | ターン方向（cw=時計回り / ccw=反時計回り） |
 | percent_score | INTEGER | 成功率スコア（0/25/50/75/100 の離散値） |
 
-ショットタイプ: Draw / Guard / Take-out / Double Take-out / Hit and Roll / Raise /
-Promotion Take-out / Freeze / Clearing / Wick / Soft Peeling / Through / Front /
-no statistics / not played
+**ショットタイプ（`type` の全14値）**
+
+
+| type 値 | 説明 | four | md |
+|---|---|---:|---:|
+| Draw | ハウス内に止めるショット | 91,607 | 30,126 |
+| Take-out | 相手ストーンを弾き出すショット | 50,797 | 4,325 |
+| Front | ハウス手前付近に止めるショット。ガード | 27,749 | 475 |
+| Hit and Roll | 当てた後にシューターを転がして止めたい位置に止める | 21,545 | 2,304 |
+| Double Take-out | 相手ストーン2個を同時にテイクアウト | 21,092 | 4,594 |
+| Clearing | クリアリング | 20,896 | 2,019 |
+| Guard | ガード（ハウス手前に置くショット） | 17,344 | 4,138 |
+| Raise | 味方ストーンを押し込むショット | 11,176 | 7,343 |
+| Promotion Take-out | 味方ストーンを押してテイクアウト | 8,828 | 2,561 |
+| Wick / Soft Peeling | ストーンをかすらせてずらすショット | 2,050 | 979 |
+| Freeze | 相手ストーンの直前に止めるショット | 346 | 226 |
+| Through | 意図的にスルーするショット。ショットスコアが定義されない | 838 | 237 |
+| no statistics | 統計対象外 | 14 | 2 |
+| not played | 投球なし | 0 | 1 |
+
+件数は 2026-09-05 時点の実測。
+`Through` / `no statistics` は成功率が定義できず `percent_score` が NULL になる
 
 ## stones テーブル（ストーン座標）
 
