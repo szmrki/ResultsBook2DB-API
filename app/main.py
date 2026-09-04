@@ -35,6 +35,7 @@ from app.routers import (  # noqa: E402
     events,
     games,
     lsds,
+    notes,
     rosters,
     shots,
     standings,
@@ -78,6 +79,40 @@ limiter = Limiter(key_func=get_remote_address)
 # 特定のエンドポイントだけ制限を変えたい場合は、そのルーター内でハードコードする
 RATE_LIMIT = "100/minute"
 
+# ─── API の説明文（OpenAPI / Swagger UI に表示される） ────────────────────────
+# ここは GitHub Pages で外部に公開される（docs/openapi.json 経由）。
+# そのため「この列に null が来る」「座標系は何か」といった *インターフェースの仕様*
+# だけを書く。実測統計・既知の不具合・研究室内の集計定義といった内部情報は
+# 書かず、API 本体（研究室内限定公開）の GET /v1/notes 側に置く。
+DESCRIPTION = """
+WCF主催のカーリング国際大会の実試合データを提供する REST API。
+
+[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、
+投球ごとのストーン座標・スコア・選手データを取得できます。
+
+- **four DB**: 男子・女子・ジュニアカテゴリの試合データ
+- **md DB**: ミックスダブルスカテゴリの試合データ
+
+## データを扱ううえでの前提
+
+1. **`ends` の `score_red` / `score_yellow` の `null` は「0点」ではありません。**
+   コンシード（投了）により**実施されなかったエンド**を表します。
+   0 点として集計すると誤った結論になるため、集計時は除外してください。
+
+2. **`stones` の `shot_order` には `null` と負値が混ざります。**
+   負値はパース由来の異常値のため、集計から除外してください。
+
+3. **`stones` は1投球につき、その投球後に盤面へ残る全ストーン（最大16行）を持ちます。**
+   「投げた石の着弾点」を得るには絞り込みが必要です。
+
+4. **`stones` の座標はメートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。
+
+利用者向けの詳細な注意点・スキーマ解説は、API 本体の `GET /v1/notes` から取得できます
+（研究室内限定公開）。
+
+> API 本体は研究室内限定公開です。
+"""
+
 # ─── FastAPI アプリ初期化 ──────────────────────────────────────────────────────
 # バージョンは pyproject.toml から読む（二重管理を防ぐため）
 _pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
@@ -87,17 +122,7 @@ with _pyproject_path.open("rb") as _f:
 app = FastAPI(
     title="ResultsBook2DB API",
     version=_VERSION,
-    description="""
-WCF主催のカーリング国際大会の実試合データを提供する REST API。
-
-[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、
-投球ごとのストーン座標・スコア・選手データを取得できます。
-
-- **four DB**: 男子・女子・ジュニアカテゴリの試合データ
-- **md DB**: ミックスダブルスカテゴリの試合データ
-
-> API 本体は研究室内限定公開です。
-""",
+    description=DESCRIPTION,
     lifespan=lifespan,
 )
 
@@ -282,6 +307,15 @@ app.include_router(
     rosters.create_router(get_md_db, RosterMdResponse, limiter, RATE_LIMIT),
     prefix="/v1/md",
     tags=["md / rosters"],
+)
+
+
+# --- 共通ルーター（md / four のどちらにも属さない） ---
+# 前提知識ドキュメントの配信。DB を持たないので prefix は /v1 直下。
+app.include_router(
+    notes.create_router(limiter, RATE_LIMIT),
+    prefix="/v1",
+    tags=["notes"],
 )
 
 

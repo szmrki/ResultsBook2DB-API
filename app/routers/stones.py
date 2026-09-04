@@ -36,7 +36,23 @@ def create_router(
     """
     router = APIRouter()
 
-    @router.get("/stones", response_model=ListResponse[StoneResponse])
+    @router.get(
+        "/stones",
+        response_model=ListResponse[StoneResponse],
+        summary="ストーン座標一覧を取得",
+        description=(
+            "ストーン座標の一覧を返す。**1投球につき、その投球後に盤面に残る"
+            "全ストーン（最大16行）**が記録されている点に注意。\n\n"
+            "> **`shot_order` には `null` と負値が混ざります。**"
+            "負値はパース由来の異常値なので、集計時は "
+            "`shot_order` が `null` でなく正の値の行だけを使ってください。\n\n"
+            "> **「その投球で投げられた石（着弾点）」を知りたい場合、"
+            "この一覧をそのまま集計してはいけません。**"
+            "盤面に残る他の石が混ざり、着弾分布が大きく歪みます。"
+            "着弾点は `shot_order` が親ショットの `number` と一致する1行です。\n\n"
+            "> 座標は**メートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def list_stones(
         request: Request,  # noqa: ARG001
@@ -106,7 +122,16 @@ def create_router(
         records = cast(list[StoneResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
-    @router.get("/stones/{stone_id}", response_model=StoneResponse)
+    @router.get(
+        "/stones/{stone_id}",
+        response_model=StoneResponse,
+        summary="ストーン座標を1件取得",
+        description=(
+            "ストーン座標を1件返す。\n\n"
+            "> 座標は**メートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。"
+            "`shot_order` が `null` または負値の場合は異常値です。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def get_stone(
         request: Request,  # noqa: ARG001

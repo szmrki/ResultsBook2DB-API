@@ -272,3 +272,31 @@ class RosterFourResponse(ORMBase):
     position: int | None
     is_skip: int | None
     is_vice: int | None
+
+
+# ─── 前提知識ドキュメント（notes） ────────────────────────────────────────────
+# DB のレコードではなく、同梱の Markdown を配信するためのモデル。
+
+class NoteDoc(str, Enum):
+    """配信する前提知識ドキュメントの名前。
+
+    Enum にしておくことで、定義外の文書名は FastAPI が 422 で弾いてくれる
+    （= 任意のファイルパスを URL から渡せないので、パストラバーサル対策も兼ねる）。
+    """
+    schema = "schema"
+    sql_notes = "sql-notes"
+    metrics = "metrics"
+
+
+class NoteResponse(BaseModel):
+    """前提知識ドキュメント一覧の1件分。
+
+    Attributes:
+        doc: 文書名（"schema" / "sql-notes" / "metrics"）
+        description: その文書に何が書いてあるかの一行説明
+        url: 本文を取得するための URL
+    """
+
+    doc: str
+    description: str
+    url: str

@@ -41,7 +41,21 @@ def create_router(
     """
     router = APIRouter()
 
-    @router.get("/ends", response_model=ListResponse[end_response_model])  # type: ignore[valid-type]
+    @router.get(
+        "/ends",
+        response_model=ListResponse[end_response_model],  # type: ignore[valid-type]
+        summary="エンド一覧を取得",
+        description=(
+            "エンドの一覧を返す。\n\n"
+            "> **注意: `score_red` / `score_yellow` の `null` は 0 点ではありません。**\n"
+            "> コンシード（投了）により**実施されなかったエンド**を表します。"
+            "終盤エンドほど多く、0 点として集計すると"
+            "「終盤は得点が少ない」という誤った結論になります。"
+            "平均得点などを出す際は、これらの行を分母から除外してください。\n\n"
+            "> ブランクエンド（`score_red = 0` かつ `score_yellow = 0`）の後の"
+            "ハンマー（後攻権）の扱いは **md と four でルールが異なります**。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def list_ends(
         request: Request,  # noqa: ARG001
@@ -94,7 +108,16 @@ def create_router(
         )
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
-    @router.get("/ends/{end_id}", response_model=end_response_model)
+    @router.get(
+        "/ends/{end_id}",
+        response_model=end_response_model,
+        summary="エンドを1件取得",
+        description=(
+            "エンドを1件返す。\n\n"
+            "> `score_red` / `score_yellow` が `null` の場合、それは 0 点ではなく"
+            "**コンシードにより実施されなかったエンド**を意味します。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def get_end(
         request: Request,  # noqa: ARG001
@@ -119,7 +142,17 @@ def create_router(
             raise HTTPException(status_code=404, detail="End not found")
         return end
 
-    @router.get("/ends/{end_id}/shots", response_model=ListResponse[ShotResponse])
+    @router.get(
+        "/ends/{end_id}/shots",
+        response_model=ListResponse[ShotResponse],
+        summary="エンドに属するショット一覧を取得",
+        description=(
+            "指定エンドに属するショットの一覧を返す。\n\n"
+            "> `percent_score` は 0/25/50/75/100 の**離散値**です（連続値ではありません）。"
+            "`type` が `Through` / `no statistics` のショットでは"
+            "成功率が定義できず `null` になります。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def list_end_shots(
         request: Request,  # noqa: ARG001

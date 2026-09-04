@@ -35,7 +35,17 @@ def create_router(
     """
     router = APIRouter()
 
-    @router.get("/lsds", response_model=ListResponse[LsdResponse])
+    @router.get(
+        "/lsds",
+        response_model=ListResponse[LsdResponse],
+        summary="LSD 一覧を取得",
+        description=(
+            "LSD（Last Stone Draw）の一覧を返す。\n\n"
+            "> **`player_name` には表記ゆれを含む行があります。**"
+            "選手名での絞り込み・集計・他テーブルとの突合では、"
+            "同一選手が別名として分かれることがあるため正規化してから扱ってください。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def list_lsds(
         request: Request,  # noqa: ARG001
@@ -79,7 +89,16 @@ def create_router(
         records = cast(list[LsdResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
-    @router.get("/lsds/{lsd_id}", response_model=LsdResponse)
+    @router.get(
+        "/lsds/{lsd_id}",
+        response_model=LsdResponse,
+        summary="LSD を1件取得",
+        description=(
+            "LSD（Last Stone Draw）を1件返す。\n\n"
+            "> `player_name` には表記ゆれを含む場合があります。"
+            "選手名で突合する際は正規化してから扱ってください。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def get_lsd(
         request: Request,  # noqa: ARG001

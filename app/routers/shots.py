@@ -89,7 +89,19 @@ def create_router(
     """
     router = APIRouter()
 
-    @router.get("/shots", response_model=ListResponse[ShotResponse])
+    @router.get(
+        "/shots",
+        response_model=ListResponse[ShotResponse],
+        summary="ショット一覧を取得",
+        description=(
+            "ショットの一覧を返す。\n\n"
+            "> **`percent_score` は 0/25/50/75/100 の離散値**です（連続値ではありません）。"
+            "高い値に偏った分布のため、平均値だけでの比較には注意してください。\n\n"
+            "> `percent_score` / `turn` の `null` はランダムな欠損ではなく、"
+            "`type` が `Through` / `no statistics` の"
+            "**成功率を定義できないショット**に対応します。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def list_shots(
         request: Request,  # noqa: ARG001
@@ -178,7 +190,16 @@ def create_router(
         records = cast(list[ShotResponse], query.offset(offset).limit(limit).all())
         return ListResponse(total=total, limit=limit, offset=offset, data=records)
 
-    @router.get("/shots/{shot_id}", response_model=ShotResponse)
+    @router.get(
+        "/shots/{shot_id}",
+        response_model=ShotResponse,
+        summary="ショットを1件取得",
+        description=(
+            "ショットを1件返す。\n\n"
+            "> `percent_score` は 0/25/50/75/100 の離散値です。`type` が "
+            "`Through` / `no statistics` の場合は成功率が定義できず `null` になります。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def get_shot(
         request: Request,  # noqa: ARG001
@@ -203,7 +224,19 @@ def create_router(
             raise HTTPException(status_code=404, detail="Shot not found")
         return shot
 
-    @router.get("/shots/{shot_id}/stones", response_model=ListResponse[StoneResponse])
+    @router.get(
+        "/shots/{shot_id}/stones",
+        response_model=ListResponse[StoneResponse],
+        summary="ショット後のストーン座標一覧を取得",
+        description=(
+            "指定ショットの**投球後に盤面に残る全ストーン**（最大16行）を返す。\n\n"
+            "> **この一覧は「投げた石の着弾点」ではありません。**"
+            "その投球で投げられた石は、`shot_order` がこのショットの `number` と"
+            "一致する1行です。区別せず集計すると着弾分布が歪みます。\n\n"
+            "> `shot_order` の `null` と負値は異常値なので除外してください。"
+            "座標は**メートル単位**（`x=0` がセンターライン）。"
+        ),
+    )
     @limiter.limit(rate_limit)
     def list_shot_stones(
         request: Request,  # noqa: ARG001
