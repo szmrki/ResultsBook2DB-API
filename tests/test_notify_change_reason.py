@@ -281,25 +281,34 @@ def test_footer_with_reason_lists_events_without_urls() -> None:
     """変更理由がある場合も、載せるのは影響大会だけ（リリースや issue の URL は載せない）。"""
     diff = make_diff(["PCCC2025Men", "WMCC2024"])
     resolution = {"status": "found", "reason": REASON, "note": ""}
-    consistency = nu.check_reason_consistency(diff, REASON, EVENT_NAMES)
 
-    footer = nu.build_reason_footer(diff, resolution, consistency)
+    footer = nu.build_reason_footer(diff, resolution)
 
     assert "既存データの修正を検出した大会（2）" in footer
     assert "PCCC2025Men, WMCC2024" in footer
     assert "http" not in footer
-    assert "⚠" not in footer  # 説明のつかない変化が無ければ警告は出さない
 
 
-def test_footer_warns_about_unexplained_events() -> None:
-    """説明のつかない変化がある場合、その大会名を警告として載せる。"""
+def test_footer_does_not_warn_about_unexplained_events() -> None:
+    """変更理由に記載の無い大会があっても、通知には警告を載せない。
+
+    照合は本文中の大会名を文字として探すだけなので、大会名を列挙しない変更
+    （全大会に及ぶ仕様変更など）では問題が無くても「記載なし」になる。
+    メンバー向けの通知に誤った警告を出さないよう、照合結果は標準出力にだけ出す。
+    """
     diff = make_diff(["PCCC2025Men", "ECC2022Men"])
     resolution = {"status": "found", "reason": REASON, "note": ""}
+    # 前提: ECC2022Men は変更理由に記載が無い（照合では検出される）
     consistency = nu.check_reason_consistency(diff, REASON, EVENT_NAMES)
+    assert consistency["unexplained_events"] == ["ECC2022Men"]
 
-    footer = nu.build_reason_footer(diff, resolution, consistency)
+    footer = nu.build_reason_footer(diff, resolution)
 
-    assert "⚠ 変更理由に記載の無い大会でも値の変化を検出しました: ECC2022Men" in footer
+    # 載るのは大会一覧の2行（見出しと大会名）だけ
+    assert footer.splitlines() == [
+        "▼ 既存データの修正を検出した大会（2）",
+        "ECC2022Men, PCCC2025Men",
+    ]
 
 
 def test_footer_states_reason_is_unknown() -> None:
@@ -307,7 +316,7 @@ def test_footer_states_reason_is_unknown() -> None:
     diff = make_diff(["PCCC2025Men"])
     resolution = {"status": "unknown", "reason": None, "note": "更新期間の外です"}
 
-    footer = nu.build_reason_footer(diff, resolution, None)
+    footer = nu.build_reason_footer(diff, resolution)
 
     assert "変更理由は自動では特定できませんでした（更新期間の外です）" in footer
 
@@ -317,7 +326,7 @@ def test_footer_falls_back_to_events_only_when_fetch_failed() -> None:
     diff = make_diff(["PCCC2025Men"])
     resolution = {"status": "failed", "reason": None, "note": "GitHub への接続に失敗"}
 
-    footer = nu.build_reason_footer(diff, resolution, None)
+    footer = nu.build_reason_footer(diff, resolution)
 
     assert "PCCC2025Men" in footer
     assert "変更理由" not in footer
@@ -325,7 +334,7 @@ def test_footer_falls_back_to_events_only_when_fetch_failed() -> None:
 
 def test_footer_is_empty_for_addition_only_update() -> None:
     """大会の追加だけの更新では、定型部分は付かない。"""
-    assert nu.build_reason_footer(make_diff([]), None, None) == ""
+    assert nu.build_reason_footer(make_diff([]), None) == ""
 
 
 # ── プロンプト ─────────────────────────────────────────────────────────

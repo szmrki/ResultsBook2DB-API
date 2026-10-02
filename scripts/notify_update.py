@@ -842,6 +842,11 @@ def find_mentioned_events(text: str, event_names: set[str]) -> set[str]:
 def check_reason_consistency(diff: dict, reason: dict, event_names: set[str]) -> dict:
     """変更理由の記述と、実際に検出した差分が食い違っていないか大会名で照合する。
 
+    照合は「変更理由の本文に大会名が書かれているか」を文字として探すだけなので、
+    結果は更新作業者が確認するための参考情報として標準出力に出し、通知には載せない。
+    大会名を列挙しない変更（全大会に及ぶ仕様変更など）では、問題が無くても
+    全大会が unexplained_events に入るため、通知に載せると誤った警告になる。
+
     Args:
         diff: detect_diff の返り値
         reason: fetch_change_reason の返り値
@@ -851,10 +856,10 @@ def check_reason_consistency(diff: dict, reason: dict, event_names: set[str]) ->
         dict: 次の3つのキーを持つ辞書（値はいずれも大会名のリスト）
             - changed_events: 値の修正を検出した大会
             - unexplained_events: 修正を検出したが、変更理由に記載が無い大会。
-              理由の説明がつかない変化なので、通知で警告する。
+              特定の大会だけを直す修正でここに大会が出たら、リリースの指定違いや
+              取り込みミスの疑いがある。
             - mentioned_unchanged_events: 変更理由に記載があるが、修正を検出しなかった大会。
-              「影響が無いことを確かめた大会」として書かれている場合もあるため、
-              通知には載せず、更新作業者が確認できるよう標準出力に出す。
+              「影響が無いことを確かめた大会」として書かれている場合もある。
     """
     changed = set(get_changed_events(diff))
     mentioned = find_mentioned_events(format_reason_text(reason), event_names)
@@ -865,18 +870,15 @@ def check_reason_consistency(diff: dict, reason: dict, event_names: set[str]) ->
     }
 
 
-def build_reason_footer(
-    diff: dict, resolution: dict | None, consistency: dict | None
-) -> str:
-    """通知文の末尾に付ける定型部分（影響大会・警告）を組み立てる。
+def build_reason_footer(diff: dict, resolution: dict | None) -> str:
+    """通知文の末尾に付ける定型部分（修正を検出した大会の一覧）を組み立てる。
 
-    正確さが必要な情報（大会名の一覧・警告）は Gemini に書かせると
-    省略や書き換えが起きうるので、ここで機械的に組み立てて本文の後ろに付ける。
+    大会名の一覧は Gemini に書かせると省略や書き換えが起きうるので、
+    ここで機械的に組み立てて本文の後ろに付ける。
 
     Args:
         diff: detect_diff の返り値
         resolution: resolve_change_reason の返り値。既存データの修正が無いときは None。
-        consistency: check_reason_consistency の返り値。変更理由が無いときは None。
 
     Returns:
         str: 通知文の末尾に付ける文字列。付けるものが無ければ空文字。
@@ -889,23 +891,11 @@ def build_reason_footer(
         lines.append(f"▼ 既存データの修正を検出した大会（{len(changed_events)}）")
         lines.append(", ".join(changed_events))
 
-    if resolution is None:
-        return "\n".join(lines)
-
-    if resolution["status"] == "found":
-        # ── 理由の説明がつかない変化への警告 ──
-        if consistency and consistency["unexplained_events"]:
-            lines.append(
-                "⚠ 変更理由に記載の無い大会でも値の変化を検出しました: "
-                + ", ".join(consistency["unexplained_events"])
-            )
-
-    elif resolution["status"] == "unknown":
-        # 自動推定できなかった場合は、理由が不明であることを明記する
+    # 変更理由を自動推定できなかった場合は、理由が不明であることを明記する。
+    # "found"（取得できた）のときは本文に理由が書かれるので、ここでは何も足さない。
+    # "failed"（GitHub から取得できなかった）のときも足さず、数値差分だけの通知にする。
+    if resolution is not None and resolution["status"] == "unknown":
         lines.append(f"※ 変更理由は自動では特定できませんでした（{resolution['note']}）")
-
-    # status == "failed"（GitHub から取得できなかった）のときは何も足さない。
-    # 数値差分だけの通知にフォールバックする。
 
     return "\n".join(lines)
 
@@ -1148,8 +1138,7 @@ def main() -> None:
     print(json.dumps(diff, ensure_ascii=False, indent=2))
 
     # ── 変更理由の取得（既存データの修正を検出したときだけ） ────────
-    resolution: dict | None = None   # resolve_change_reason の結果
-    consistency: dict | None = None  # check_reason_consistency の結果
+    resolution: dict | None = None  # resolve_change_reason の結果
     if diff.get("update_type", {}).get("has_modification"):
         print("\n既存データの修正を検出: 変更理由を GitHub から取得中...")
         resolution = resolve_change_reason(args.source_release, args.prev_file, args.new_file)
@@ -1161,15 +1150,23 @@ def main() -> None:
                 issue_numbers = [f"#{issue['number']}" for issue in pull["issues"]]
                 print(f"  PR #{pull['number']}: {pull['title']} {' '.join(issue_numbers)}")
 
-            # 変更理由の記述と実際の差分を大会名で照合する
+            # 変更理由の記述と実際の差分を大会名で照合する。
+            # 結果は作業者が確認するための参考情報で、通知には載せない。
             new_conn = sqlite3.connect(args.new_file)
             try:
                 event_names = get_event_names(new_conn)
             finally:
                 new_conn.close()
             consistency = check_reason_consistency(diff, reason, event_names)
-            print("変更理由と差分の照合:")
+            print("変更理由と差分の照合（参考情報。通知には載りません）:")
             print(json.dumps(consistency, ensure_ascii=False, indent=2))
+            if consistency["unexplained_events"]:
+                print(
+                    "注意: 変更理由に記載の無い大会で値の変化を検出しました。"
+                    "特定の大会だけを直す修正なら、リリースの指定違いや取り込みミスの"
+                    "可能性があります（全大会に及ぶ変更では、大会名が列挙されないため"
+                    "全大会がここに出ます）"
+                )
         else:
             # unknown / failed: 変更理由なしで通知を続行する（数値差分のみ）
             print(f"変更理由なしで続行します: {resolution['note']}")
@@ -1179,7 +1176,7 @@ def main() -> None:
 
     # 変更理由（取得できた場合のみ）と、通知の末尾に付ける定型部分
     reason = resolution["reason"] if resolution else None
-    footer = "" if diff.get("is_initial") else build_reason_footer(diff, resolution, consistency)
+    footer = "" if diff.get("is_initial") else build_reason_footer(diff, resolution)
 
     # ── --no-llm: 構造化差分の確認だけ行う ──────────────────────────
     # Gemini も Slack も呼ばず、上で出力した差分JSONの確認に留める。
@@ -1212,7 +1209,7 @@ def main() -> None:
         print("Gemini APIで通知文を生成中...（混雑時は再試行のため最大1分ほどかかります）")
         prompt = build_prompt(diff, reason)
         message = call_gemini(prompt)
-        # 大会一覧・警告は Gemini に任せず、機械的に組み立てたものを後ろに付ける
+        # 大会一覧は Gemini に任せず、機械的に組み立てたものを後ろに付ける
         if footer:
             message = f"{message.rstrip()}\n\n{footer}"
     print(f"生成された通知文:\n{message}")
