@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ResultsBook2DB API",
-    "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n## データを扱ううえでの前提\n\n1. **`ends` の `score_red` / `score_yellow` の `null` は「0点」ではありません。**\n   コンシード（投了）により**実施されなかったエンド**を表します。\n   0 点として集計すると誤った結論になるため、集計時は除外してください。\n\n2. **`stones` の `shot_order` には `null` と負値が混ざります。**\n   負値はパース由来の異常値のため、集計から除外してください。\n\n3. **`stones` は1投球につき、その投球後に盤面へ残る全ストーン（最大16行）を持ちます。**\n   「投げた石の着弾点」を得るには絞り込みが必要です。\n\n4. **`stones` の座標はメートル単位**（DigitalCurling3 座標系、`x=0` がセンターライン）。\n\n利用者向けの詳細な注意点・スキーマ解説は、API 本体の `GET /v1/notes` から取得できます\n（研究室内限定公開）。\n\n> API 本体は研究室内限定公開です。\n",
+    "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n> API 本体は研究室内限定公開です。\n",
     "version": "1.5.0"
   },
   "paths": {
@@ -1130,7 +1130,7 @@
           "four / shots"
         ],
         "summary": "ショット一覧を取得",
-        "description": "ショットの一覧を返す。\n\n> **`percent_score` は 0/25/50/75/100 の離散値**です（連続値ではありません）。高い値に偏った分布のため、平均値だけでの比較には注意してください。\n\n> `percent_score` / `turn` の `null` はランダムな欠損ではなく、`type` が `Through` / `no statistics` の**成功率を定義できないショット**に対応します。",
+        "description": "ショットの一覧を返す。\n\n> **`percent_score` は 0/25/50/75/100 の離散値**です。\n\n> `percent_score` / `turn` の `null` はランダムな欠損ではなく、`type` が `Through` / `no statistics` の**成功率を定義できないショット**に対応します。",
         "operationId": "list_shots_v1_four_shots_get",
         "parameters": [
           {
