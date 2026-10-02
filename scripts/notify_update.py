@@ -49,6 +49,7 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 from scripts.fetch_change_reason import ChangeReasonError, fetch_change_reason
 
@@ -115,6 +116,20 @@ STRING_COLUMNS: list[str] = [
     "shots.team",
     "lsds.team",
 ]
+
+# Gemini API のリトライ設定。
+# Gemini は混雑時に 503（UNAVAILABLE）を返すことがある。通知が出ないまま止まるのを
+# 避けるため、間隔を空けて再試行する。SDK は既定ではリトライしないので明示的に指定する。
+#   attempts      … 最初の1回を含む最大試行回数
+#   initial_delay … 1回目の再試行までの待ち時間（秒）。以降は2倍ずつ伸びる
+#   max_delay     … 待ち時間の上限（秒）
+# この設定だと待ち時間はおよそ 5 → 10 → 20 → 30 秒で、最大で1分強待つ。
+# 再試行の対象になるステータスコードは SDK の既定（408 / 429 / 5xx）に任せる。
+GEMINI_RETRY_OPTIONS = types.HttpRetryOptions(
+    attempts=5,
+    initial_delay=5.0,
+    max_delay=30.0,
+)
 
 
 # ─── SQLiteユーティリティ ─────────────────────────────────────────────────────
@@ -1030,13 +1045,18 @@ def call_gemini(prompt: str) -> str:
 
     Raises:
         ValueError: GEMINI_API_KEY が未設定の場合
+        google.genai.errors.APIError: 再試行しても API がエラーを返し続けた場合
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("環境変数 GEMINI_API_KEY が設定されていません")
 
-    # google-genai（新SDK）の使い方: Client を作成してモデルを呼び出す
-    client = genai.Client(api_key=api_key)
+    # google-genai（新SDK）の使い方: Client を作成してモデルを呼び出す。
+    # http_options にリトライ設定を渡すと、503 などの一時的なエラーを SDK が再試行する。
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(retry_options=GEMINI_RETRY_OPTIONS),
+    )
     response = client.models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=prompt,
@@ -1189,7 +1209,7 @@ def main() -> None:
         print("初回登録: 定型文を生成...")
         message = format_initial_message(diff)
     else:
-        print("Gemini APIで通知文を生成中...")
+        print("Gemini APIで通知文を生成中...（混雑時は再試行のため最大1分ほどかかります）")
         prompt = build_prompt(diff, reason)
         message = call_gemini(prompt)
         # 大会一覧・警告は Gemini に任せず、機械的に組み立てたものを後ろに付ける
