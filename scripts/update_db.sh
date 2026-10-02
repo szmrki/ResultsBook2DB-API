@@ -5,19 +5,37 @@
 # 使い方:
 #   ./scripts/update_db.sh md sqlite/md_260514.db
 #   ./scripts/update_db.sh four sqlite/normal_260502.db
+#
+#   # 既存データの修正を含む更新では、DB の生成に使った ResultsBook2DB のリリースを
+#   # 指定すると、その PR・issue から変更理由を取得して通知に含める
+#   ./scripts/update_db.sh four sqlite/normal_261002.db --source-release v1.4.1
 
 set -e  # エラーが出たら即終了
 
 # ── 引数チェック ────────────────────────────────────────────────
-if [ "$#" -ne 2 ]; then
-    echo "使い方: $0 <md|four> <SQLiteファイルパス>"
+# 引数は 2 個（ターゲットとファイル）か、--source-release <タグ> を足した 4 個
+if [ "$#" -ne 2 ] && [ "$#" -ne 4 ]; then
+    echo "使い方: $0 <md|four> <SQLiteファイルパス> [--source-release <タグ>]"
     echo "例: $0 md sqlite/md_260514.db"
     echo "例: $0 four sqlite/normal_260502.db"
+    echo "例: $0 four sqlite/normal_261002.db --source-release v1.4.1"
     exit 1
 fi
 
 TARGET=$1       # md または four
 SQLITE_FILE=$2  # SQLiteファイルのパス
+
+# ── 任意引数: --source-release ──────────────────────────────────
+# notify_update.py にそのまま渡す引数を配列で持つ（指定が無ければ空のまま）。
+# 配列にしておくと、空のときは何も渡さず、あるときは2語として正しく渡せる。
+NOTIFY_ARGS=()
+if [ "$#" -eq 4 ]; then
+    if [ "$3" != "--source-release" ]; then
+        echo "エラー: 3番目の引数は --source-release を指定してください（指定値: $3）"
+        exit 1
+    fi
+    NOTIFY_ARGS=(--source-release "$4")
+fi
 
 # ── 入力値チェック ──────────────────────────────────────────────
 if [ "$TARGET" != "md" ] && [ "$TARGET" != "four" ]; then
@@ -93,7 +111,8 @@ if [ -f "$PREV_FILE" ]; then
     PYTHONPATH=. uv run python scripts/notify_update.py \
         --target "$TARGET" \
         --new-file "$SQLITE_FILE" \
-        --prev-file "$PREV_FILE"
+        --prev-file "$PREV_FILE" \
+        "${NOTIFY_ARGS[@]}"
 else
     # 初回実行時（prev がない）は全件数のみ通知
     echo "      前回ファイルが存在しないため差分検出をスキップ（初回実行）"
