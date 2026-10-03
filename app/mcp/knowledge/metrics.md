@@ -4,7 +4,7 @@
 自由SQL（run_query）で集計する際は、以下の定義に合わせること。
 将来的にはこれらを定義済みメトリクスツールとして提供する予定。
 
-**掲載の基準値はすべて実データでの実測値（2026-08-08 時点）**。
+**掲載の基準値はすべて実データでの実測値（2026-10-04 時点）**。
 自分の集計結果がこの桁から大きく外れたら、フィルタの付け忘れを疑うこと。
 
 ---
@@ -107,6 +107,8 @@ WHERE percent_score IS NOT NULL
 ```
 
 `Through` と `no statistics` は成功率が構造的に定義できないショット。
+md の事前配置ストーン（`number = 0`、SQL上の注意点 §9）は `percent_score` が NULL なので、
+このフィルタで除外される。
 
 ## B-1. 平均成功率（avg percent score）
 
@@ -171,7 +173,9 @@ WHERE st.shot_order = sh.number   -- ★ 着弾点に限定
   AND st.shot_order > 0            -- 異常値を除外
 ```
 
-四人制の対象行数は 234,206 行。
+四人制の対象行数は 234,183 行。
+md の事前配置ストーン（`shots.number = 0`、SQL上の注意点 §9）は `shot_order > 0` で外れるので、
+着弾点には含まれない。
 
 ## C-1. 平均着弾距離
 
@@ -181,7 +185,7 @@ WHERE st.shot_order = sh.number   -- ★ 着弾点に限定
 AVG(st.distance_from_center)
 ```
 
-実測（four・全着弾点）: **1.605 m**
+実測（four・全着弾点）: **1.602 m**
 
 ## C-2. インハウス率
 
@@ -191,7 +195,7 @@ AVG(st.distance_from_center)
 AVG( CASE WHEN st.inhouse = 1 THEN 1.0 ELSE 0.0 END )
 ```
 
-実測（four・全着弾点）: **70.60%**
+実測（four・全着弾点）: **70.67%**
 
 > ⚠️ **`insheet` はフィルタとして使えない。** 実測では非NULL行 1,149,914 行の
 > **すべてが `insheet = 1`**（`insheet = 0` は0件）。シート外に出た石は

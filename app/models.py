@@ -150,12 +150,16 @@ class End(Base):
 
 
 class Shot(Base):
-    """投球テーブル。1エンドにつき最大16投の投球データを格納。
+    """投球テーブル。1エンドにつき最大16投（md は最大10投）の投球データを格納。
+
+    md では、エンド開始時の事前配置ストーンを number=0 の行として持つ。
+    投球ではないので、その行の color / team / player_name / type / turn /
+    percent_score はすべて NULL。four には number=0 の行は無い。
 
     Attributes:
         id: 投球ID（主キー）
         end_id: 所属エンドID（ends.id への外部キー）
-        number: 投球番号（1〜16）
+        number: 投球番号（four: 1〜16 / md: 1〜10）。md の 0 は事前配置ストーン
         color: 投球チームのストーン色（"red" / "yellow"）
         team: チーム名（略称）
         player_name: 投球選手名（NULL あり）
@@ -189,19 +193,21 @@ class Stone(Base):
     """ストーン座標テーブル。各投球後にシート上に存在する全ストーンの座標を格納。
 
     1投球につき最大16レコード（シート上に残る全ストーン分）。
-    座標系はシートのセンターラインを原点とした単位（フィート）。
+    md の shots.number=0 に紐づく行だけは、エンド開始時（事前配置）の盤面を表す。
+    座標系は DigitalCurling3 のメートル座標系（シートのセンターラインを原点）。
 
     Attributes:
         id: ストーンID（主キー）
         shot_id: 対応投球ID（shots.id への外部キー）
         color: ストーンの色（"red" / "yellow"）
-        x: 横方向座標（約 -2.24〜+2.26 ft）
-        y: 縦方向座標（約 31.97〜40.51 ft）
-        distance_from_center: センター（ティー）からの距離（フィート）
+        x: 横方向座標（約 -2.24〜+2.26 m）
+        y: 縦方向座標（約 31.97〜40.38 m）
+        distance_from_center: センター（ティー）からの距離（メートル）
         inhouse: ハウス内フラグ（1=ハウス内, 0=ハウス外）
         insheet: シート内フラグ（1=シート内, 0=シート外）
         shot_order: このストーンが何投目に投げられたかを示す投球順。
             盤面に残る各ストーンの由来投球を保持する。
+            md の 0 は事前配置ストーン（投球された石ではない）。
             md / four とも保持する。ただし未対応の大会分は NULL（把握済み）。
         shot: 対応投球オブジェクト（relationship）
     """

@@ -63,19 +63,30 @@ events  →  games  →  ends  →  shots  →  stones
 
 ## shots テーブル（投球）
 
-1エンドにつき最大16投。
+1エンドにつき four は最大16投、md は最大10投。
+md では加えて、エンド開始時の事前配置ストーンを表す `number = 0` の行が付く。
 
 | カラム | 型 | 説明 |
 |---|---|---|
 | id | INTEGER | 投球ID（PK） |
 | end_id | INTEGER | 所属エンドID（FK → ends.id） |
-| number | INTEGER | 投球番号（1〜16） |
+| number | INTEGER | 投球番号（four: 1〜16 / md: 1〜10）。md の `0` は事前配置ストーン（下記） |
 | color | STRING | 投球チームのストーン色（red / yellow） |
 | team | STRING | チーム名（略称） |
 | player_name | STRING | 投球選手名（NULL あり） |
 | type | STRING | ショットタイプ（下記。NULL あり） |
 | turn | STRING | ターン方向（cw=時計回り / ccw=反時計回り） |
 | percent_score | INTEGER | 成功率スコア（0/25/50/75/100 の離散値） |
+
+**`number = 0`: 事前配置ストーン（md のみ）**
+
+MD では各エンドの開始時に、両チームのストーンが1個ずつ盤面に置かれる
+（ハンマー側がハウス内、非ハンマー側がガード）。
+md ではこの「1投目より前の盤面」を、`number = 0` の行として `shots` に持つ。
+
+- 投球ではないので、`color` / `team` / `player_name` / `type` / `turn` / `percent_score` は**すべて NULL**
+- 紐づく `stones` は事前配置ストーンの2行で、`shot_order = 0`
+- **投球数を数えるときは `number >= 1` で絞ること**
 
 **ショットタイプ（`type` の全14値）**
 
@@ -103,6 +114,7 @@ events  →  games  →  ends  →  shots  →  stones
 ## stones テーブル（ストーン座標）
 
 各投球後のシート上に残る全ストーンの座標。1投球につき最大16レコード。
+md の `shots.number = 0` に紐づく行だけは、投球後ではなくエンド開始時（事前配置）の盤面を表す。
 座標系は DigitalCurling3 のメートル座標系（詳細は rb2db://sql-notes の「座標系」を参照）。
 
 | カラム | 型 | 説明 |
@@ -111,11 +123,11 @@ events  →  games  →  ends  →  shots  →  stones
 | shot_id | INTEGER | 対応投球ID（FK → shots.id） |
 | color | STRING | ストーンの色（red / yellow） |
 | x | FLOAT | 横方向座標（約 -2.24〜+2.26 m） |
-| y | FLOAT | 縦方向座標（約 31.97〜40.51 m） |
+| y | FLOAT | 縦方向座標（約 31.97〜40.38 m） |
 | distance_from_center | FLOAT | ハウス中心からの距離（メートル） |
 | inhouse | INTEGER | ハウス内フラグ（1=内, 0=外） |
 | insheet | INTEGER | シート内フラグ（1=内, 0=外） |
-| shot_order | INTEGER | そのストーンが何投目由来か　|
+| shot_order | INTEGER | そのストーンが何投目由来か。md の `0` は事前配置ストーン |
 
 ## lsds テーブル（Last Stone Draw）
 
@@ -167,7 +179,8 @@ md / four でカラム構成が異なり、片方のみ保持で他方は NULL�
 | カテゴリ | MD のみ | Men / Women / Junior Men / Junior Women |
 | ends.is_power_play | あり | NULL |
 | stones.shot_order | あり。未対応の大会のみ NULL | あり。未対応の大会のみ NULL |
+| shots.number | 0〜10（`0` は事前配置ストーン） | 1〜16 |
 | rosters.gender | あり | NULL |
 | rosters.position / is_skip / is_vice | NULL | あり |
 | shots データ充実度 | 大会により NULL 多し | ほぼ全投球に type・選手名あり |
-| 収録規模 | 13大会 / 1,419試合 / 座標約41.8万行 | 42大会 / 2,241試合 / 座標約115万行 |
+| 収録規模 | 13大会 / 1,419試合 / 座標約43.2万行 | 42大会 / 2,241試合 / 座標約115万行 |
