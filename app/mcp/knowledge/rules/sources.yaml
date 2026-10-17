@@ -1,0 +1,181 @@
+# 原典（PDF）の台帳。叩き台（2026-10-18）。
+# PDF そのものはリポジトリに置かない。ここには URL だけを書く。
+# 手元の PDF は gitignore 済みの sources/rules/<publisher>/<url の末尾のファイル名> に置く。
+#
+# 各項目:
+#   id:        changes.yaml / editions.yaml から参照する ID
+#   publisher: wcf / jca
+#   kind:      rules（規則書） / changes（変更箇所を示した版） / notice（改定案内） / trial（試験ルール）
+#   lang:      en / ja
+#   url:       元の URL（404 になっているものもある）
+#   archive:   Wayback Machine の URL（年だけ指定した形は、最も近い保存日時に飛ぶ）
+#   status:    live（元の URL で取得可） / archived（Wayback で確認済み） / unverified（リンクはあったが保存を未確認）
+#   parts:     ページ範囲で分割されている場合のファイル名
+
+sources:
+  # ---- WCF 英語版 -------------------------------------------------------
+  - id: wcf-2026-rules
+    publisher: wcf
+    kind: rules
+    lang: en
+    url: https://worldcurling.org/wp-content/uploads/2026/10/Rules-2026_Clean.pdf
+    status: live
+
+  - id: wcf-2026-changes
+    publisher: wcf
+    kind: changes
+    lang: en
+    url: https://worldcurling.org/wp-content/uploads/2026/08/Rules2026-ChangeLog.pdf
+    status: live
+
+  - id: wcf-2023-rules
+    publisher: wcf
+    kind: rules
+    lang: en
+    url: https://worldcurling.org/wp-content/uploads/2023/07/2023-The-Rules-of-Curling.pdf
+    status: live
+
+  - id: wcf-2023-changes
+    publisher: wcf
+    kind: changes
+    lang: en
+    url: https://worldcurling.org/wp-content/uploads/2023/07/2023-The-Rules-of-Curling-_Change-Log.pdf
+    archive: https://web.archive.org/web/20240115220358/https://worldcurling.org/wp-content/uploads/2023/07/2023-The-Rules-of-Curling-_Change-Log.pdf
+    status: archived
+
+  - id: wcf-2022-rules
+    publisher: wcf
+    kind: rules
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104837/2022-The-Rules-of-Curling19092022.pdf
+    archive: https://web.archive.org/web/2022/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104837/2022-The-Rules-of-Curling19092022.pdf
+    status: unverified
+
+  - id: wcf-2022-changes
+    publisher: wcf
+    kind: changes
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104846/2022-The-Rules-of-Curling-Change_Log_19092022.pdf
+    archive: https://web.archive.org/web/2022/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104846/2022-The-Rules-of-Curling-Change_Log_19092022.pdf
+    status: unverified
+
+  - id: wcf-2022-trial
+    publisher: wcf
+    kind: trial
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2023/01/24084936/Trial-Rule-2022-2023_19012023.pdf
+    archive: https://web.archive.org/web/2023/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2023/01/24084936/Trial-Rule-2022-2023_19012023.pdf
+    status: unverified
+
+  - id: wcf-2021-rules
+    publisher: wcf
+    kind: rules
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092643/2021-The-Rules-of-Curling.pdf
+    archive: https://web.archive.org/web/2021/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092643/2021-The-Rules-of-Curling.pdf
+    status: unverified
+
+  - id: wcf-2021-changes
+    publisher: wcf
+    kind: changes
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092658/2021-The-Rules-of-Curling-Change-Log.pdf
+    archive: https://web.archive.org/web/2021/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092658/2021-The-Rules-of-Curling-Change-Log.pdf
+    status: unverified
+
+  - id: wcf-2020-rules
+    publisher: wcf
+    kind: rules
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151044/2020-The-Rules-of-Curling.pdf
+    archive: https://web.archive.org/web/2020/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151044/2020-The-Rules-of-Curling.pdf
+    status: unverified
+
+  - id: wcf-2020-changes
+    publisher: wcf
+    kind: changes
+    lang: en
+    url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151057/2020-The-Rules-of-Curling-Change-log.pdf
+    archive: https://web.archive.org/web/2020/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151057/2020-The-Rules-of-Curling-Change-log.pdf
+    status: unverified
+
+  - id: wcf-2019-rules
+    publisher: wcf
+    kind: rules
+    lang: en
+    url: https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100751/2019-The-Rules-of-Curling.pdf
+    archive: https://web.archive.org/web/2019/https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100751/2019-The-Rules-of-Curling.pdf
+    status: unverified
+
+  - id: wcf-2019-changes
+    publisher: wcf
+    kind: changes
+    lang: en
+    url: https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100941/2019-The-Rules-of-Curling-_Changelog.pdf
+    archive: https://web.archive.org/web/2019/https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100941/2019-The-Rules-of-Curling-_Changelog.pdf
+    status: unverified
+
+  # ---- JCA 日本語版（全文） -------------------------------------------
+  # 2018.11 以前と 2019.10 の改定案内は、必要になった時点で追加する（memo/rule_sources.md に一覧あり）。
+  - id: jca-2026-09
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: https://www.curling.or.jp/sites/default/files/2026-09/rule-2026-09-01-38.pdf
+    archive: https://web.archive.org/web/20261002105029/https://www.curling.or.jp/sites/default/files/2026-09/rule-2026-09-01-38.pdf
+    status: archived
+    parts: [rule-2026-09-01-38.pdf]  # 39 ページ以降は未発見
+
+  - id: jca-2025-09
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: https://www.curling.or.jp/committee/competition/rule-2025-09-01-37.pdf
+    archive: https://web.archive.org/web/20251011125634/https://www.curling.or.jp/committee/competition/rule-2025-09-01-37.pdf
+    status: archived
+    parts: [rule-2025-09-01-37.pdf, rule-2025-09-38-63.pdf, rule-2025-09-64-85.pdf, rule-2025-09-info.pdf]
+
+  - id: jca-2024-10
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: https://www.curling.or.jp/committee/competition/rule-2024-10-1-36.pdf
+    archive: https://web.archive.org/web/20250217210207/https://www.curling.or.jp/committee/competition/rule-2024-10-1-36.pdf
+    status: archived
+    parts: [rule-2024-10-1-36.pdf, rule-2024-10-37-62.pdf, rule-2024-10-63-84.pdf, rule-2024-10-info.pdf]
+
+  - id: jca-2023-10
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: http://curling.or.jp/committee/competition/rule-2023-10-1-36.pdf
+    archive: https://web.archive.org/web/20231211164506/http://curling.or.jp/committee/competition/rule-2023-10-1-36.pdf
+    status: archived
+    parts: [rule-2023-10-1-36.pdf, rule-2023-10-37-62.pdf, rule-2023-10-63-85.pdf, rule-2023-10-info.pdf]
+
+  - id: jca-2022-11
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: http://curling.or.jp/committee/competition/rule-2022-11-1-34.pdf
+    archive: https://web.archive.org/web/20230128105818/http://curling.or.jp/committee/competition/rule-2022-11-1-34.pdf
+    status: archived
+    parts: [rule-2022-11-1-34.pdf, rule-2022-11-35-58.pdf, rule-2022-11-59-79.pdf, rule-2022-11-info.pdf]
+
+  - id: jca-2021-11
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: http://curling.or.jp/committee/competition/rule-2021-11-1-34.pdf
+    archive: https://web.archive.org/web/20211203013014/http://curling.or.jp/committee/competition/rule-2021-11-1-34.pdf
+    status: archived
+    parts: [rule-2021-11-1-34.pdf, rule-2021-11-35-58.pdf, rule-2021-11-59-76.pdf, rule-2021-info.pdf]
+
+  - id: jca-2020-11
+    publisher: jca
+    kind: rules
+    lang: ja
+    url: http://curling.or.jp/committee/competition/rule-2020-11-1-35.pdf
+    archive: https://web.archive.org/web/20210128055400/http://curling.or.jp/committee/competition/rule-2020-11-1-35.pdf
+    status: archived
+    parts: [rule-2020-11-1-35.pdf, rule-2020-11-36-57.pdf, rule-2020-11-info.pdf]

@@ -1,0 +1,60 @@
+# 規則書の版と収録状況。叩き台（2026-10-18）。
+# 書き方は README.md §3 を参照。
+#
+# 各項目:
+#   id:                  WCF の版（wcf-<年>）
+#   document_date:       規則書の表紙の日付
+#   effective_from:      施行日
+#   effective_from_basis: 施行日の根拠（stated = 本文に明記 / cover_date = 表紙の日付を採用 / unknown）
+#   jca_edition:         対応する JCA 日本語版の年月（翻訳の公開時期で、施行日とは別物）
+#   coverage:            full / major_only / pending / missing
+#   sources:             sources.yaml の id
+#   notes:               対象外と判断した主な変更など、後から見て迷いそうな点
+
+editions:
+  - id: wcf-2026
+    document_date: 2026-09-01
+    effective_from: 2026-09-01
+    effective_from_basis: cover_date  # 本文に施行日の明記なし
+    jca_edition: "2026.09"
+    coverage: pending  # 下書きのみ。全変更点の確認が済んだら full にする
+    sources: [wcf-2026-rules, wcf-2026-changes, jca-2026-09]
+    notes:
+      - C6（持ち時間）は書式の整理のみで、時間の値は変わっていない。
+      - C7（タイムアウト）の変更は、コーチ席の呼び方など運営面のみ（対象外）。
+      - C10（審判）の大幅な書き換えは対象外。
+
+  - id: wcf-2025
+    coverage: missing  # WCF 版の原典が未発見。JCA 2025.09 版はある
+    jca_edition: "2025.09"
+    sources: [jca-2025-09]
+
+  - id: wcf-2024
+    coverage: missing  # WCF 版の原典が未発見。JCA 2024.10 版はある
+    jca_edition: "2024.10"
+    sources: [jca-2024-10]
+
+  - id: wcf-2023
+    coverage: pending
+    jca_edition: "2023.10"
+    sources: [wcf-2023-rules, wcf-2023-changes, jca-2023-10]
+
+  - id: wcf-2022
+    coverage: pending
+    jca_edition: "2022.11"
+    sources: [wcf-2022-rules, wcf-2022-changes, wcf-2022-trial, jca-2022-11]
+
+  - id: wcf-2021
+    coverage: pending
+    jca_edition: "2021.11"
+    sources: [wcf-2021-rules, wcf-2021-changes, jca-2021-11]
+
+  - id: wcf-2020
+    coverage: pending
+    jca_edition: "2020.11"
+    sources: [wcf-2020-rules, wcf-2020-changes, jca-2020-11]
+
+  - id: wcf-2019
+    coverage: pending
+    jca_edition: "2019.10"  # JCA は改定案内のみ
+    sources: [wcf-2019-rules, wcf-2019-changes]

@@ -1,0 +1,83 @@
+# 版ごとの変更点。叩き台（2026-10-18）。
+# 書き方は README.md §3 を参照。
+#
+# 各項目:
+#   edition:      editions.yaml の id
+#   topic:        topics.yaml の id
+#   type:         introduced / modified / removed / trial / split / merged
+#   summary_ja:   自分の言葉での要約（原文を長く引用しない）
+#   before / after: 変更前後の短い説明（必要なときだけ）
+#   data_impact:  このデータで何に気をつけるか（分析結果は書かない）
+#   source:       原典（sources.yaml の id）・条番号・ページ
+#   verified:     人が原文と照らして確認したら true
+
+changes:
+  - edition: wcf-2026
+    topic: md_positioned_stones
+    type: modified
+    summary_ja: >-
+      ハウス手前側の事前配置ストーン（Position A）を置く基準点が、3 点から 4 点に変わった。
+      基準の取り方も「ホッグラインとハウス前端の中間点」から「ハウス前端からの距離」に変わった。
+    before: >-
+      ホッグラインとハウス前端の中間点、およびそこから 3 フィート（914 mm）前後の計 3 点。
+    after: >-
+      ハウス前端から 4'6"（1.372 m）・6'6"（1.981 m）・8'6"（2.591 m）・10'6"（3.200 m）の計 4 点。
+    data_impact: >-
+      md の事前配置ストーン（shots.number = 0 に紐づく stones）のうち、ガード側の y 座標の分布が
+      この版を境に変わりうる。rb2db の座標系（Tee Line y = 38.405、ハウス半径 1.829 m）で
+      基準点を計算すると、変更前は y ≈ 33.376 / 34.290 / 35.204、変更後は
+      y ≈ 33.376 / 33.985 / 34.595 / 35.204（いずれも計算値。ストーンは点の直前か直後に置く）。
+      2026-10-11 時点の md データ（すべて変更前の大会）では、ガード側の y はほぼすべて 35.0〜35.3 にあり、
+      ハウス寄りの基準点付近に集中している。版をまたいで事前配置ストーンの位置を集計するときは、版ごとに分けること。
+    source:
+      doc: wcf-2026-changes
+      rule: R17 (b) I
+      page: 25-26
+    verified: false
+
+  - edition: wcf-2026
+    topic: sweeping
+    type: modified
+    summary_ja: >-
+      同じ大会で 2 回目以降のスウィーピング違反があったとき、試合中の違反については、
+      投球を一律に取り除くのではなく、相手チームが「そのまま残す」か「取り除いて元に戻す」かを選べるようになった。
+      LSD 中の違反は従来どおり最大距離を記録する。
+    data_impact: >-
+      違反はまれなので集計への影響は小さい。違反に伴うストーンの除去が起きた投球の解釈が、
+      この版の前後で異なりうる。
+    source:
+      doc: wcf-2026-changes
+      rule: R8 (a)
+      page: 13-14
+    verified: false
+
+  - edition: wcf-2026
+    topic: team_lineup
+    type: modified
+    summary_ja: >-
+      試合中に選手が投球できなくなったときの扱いが整理された。交代選手をすぐ入れるか、
+      そのエンドと次の 1 エンドに限って 3 人で続けるかを選べる。3 人で続けられるのはこの 2 エンドまでで、
+      その後は 4 人に戻せなければ没収試合になる。欠員は 1 試合につき 1 回まで。
+    data_impact: >-
+      選手別の投球数を集計するとき、欠員のあったエンドでは 1 人あたりの投球数が通常と異なる。
+      この版の前後で、3 人で続けられる長さが異なる。
+    source:
+      doc: wcf-2026-changes
+      rule: R3 (c)
+      page: 7-9
+    verified: false
+
+  - edition: wcf-2026
+    topic: delivery
+    type: modified
+    summary_ja: >-
+      投球側のティーラインを越えた後にストーン（グラナイト部分）に触れた場合は、
+      動いているストーンに触れたものとして取り除かれることが明記された。
+      ストーンはホッグラインに達した時点で投球されたものとみなす、という定義も加わった。
+    data_impact: >-
+      該当はまれで、集計への影響はほぼない。
+    source:
+      doc: wcf-2026-changes
+      rule: R5
+      page: 11
+    verified: false

@@ -14,3 +14,5 @@ __pycache__
 logs/
 memo/
 CLAUDE.local.md
+# 競技規則の原典 PDF（著作権のため公開リポジトリに置かない。台帳は app/mcp/knowledge/rules/sources.yaml）
+sources/
