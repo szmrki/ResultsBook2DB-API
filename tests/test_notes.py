@@ -8,7 +8,7 @@
   REST API 利用者にはその経路がなかった。/v1/notes はその差を埋めるもの。
 
 ここで守りたいこと:
-  1. 3種類の文書がすべて配信されていること（欠けたら利用者が前提を知れない）
+  1. 4種類の文書がすべて配信されていること（欠けたら利用者が前提を知れない）
   2. 定義外の文書名を受け付けないこと（＝任意のファイルを読み出せない）
   3. 一覧に載っている URL が実際に取得できること（リンク切れ防止）
   4. 「最重要の落とし穴」が本文に載り続けていること（知識の空洞化防止）
@@ -18,11 +18,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 # 配信されているはずの文書名。増減したらこのテストも更新する。
-EXPECTED_DOCS = ["schema", "sql-notes", "metrics"]
+EXPECTED_DOCS = ["schema", "sql-notes", "metrics", "rules"]
 
 
 def test_list_notes(client: TestClient) -> None:
-    """GET /v1/notes が3種類の文書を一覧で返すことを確認する。
+    """GET /v1/notes が4種類の文書を一覧で返すことを確認する。
 
     Args:
         client: conftest.py の client フィクスチャ（自動で注入される）
@@ -43,7 +43,7 @@ def test_list_notes(client: TestClient) -> None:
 
 # ─── パラメータ化テスト ───────────────────────────────────────────────────
 # @pytest.mark.parametrize は「同じテストを引数を変えて繰り返す」仕組み。
-# 3つの文書それぞれについて同じ検証をしたいので、3回テストを書く代わりに使う。
+# 4つの文書それぞれについて同じ検証をしたいので、4回テストを書く代わりに使う。
 
 @pytest.mark.parametrize("doc", EXPECTED_DOCS)
 def test_get_note_returns_markdown(client: TestClient, doc: str) -> None:
@@ -51,7 +51,7 @@ def test_get_note_returns_markdown(client: TestClient, doc: str) -> None:
 
     Args:
         client: テスト用 HTTP クライアント
-        doc: 取得する文書名（parametrize により3回それぞれの値で実行される）
+        doc: 取得する文書名（parametrize により4回それぞれの値で実行される）
     """
     # Act
     response = client.get(f"/v1/notes/{doc}")
@@ -109,6 +109,24 @@ def test_sql_notes_contains_critical_pitfalls(client: TestClient) -> None:
     # Assert: ends の NULL 除外と、shot_order の異常値除外
     assert "score_red IS NOT NULL" in text
     assert "shot_order" in text
+
+
+def test_rules_contains_major_boundaries(client: TestClient) -> None:
+    """rules に、集計に最も効く規則変更が載り続けていることを確認する。
+
+    5 ロックルールとノーティックは、4 人制のデータを時期をまたいで比べるときに
+    必ず境目になる。rules.md は YAML から生成しているので、YAML の編集で
+    うっかり消えたときに気づけるようにする。
+
+    Args:
+        client: テスト用 HTTP クライアント
+    """
+    # Act
+    text = client.get("/v1/notes/rules").text
+
+    # Assert
+    assert "5 ロックルール" in text
+    assert "ノーティック" in text
 
 
 def test_openapi_description_points_to_notes() -> None:

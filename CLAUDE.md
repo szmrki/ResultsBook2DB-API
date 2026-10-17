@@ -13,5 +13,8 @@
 - **DBスキーマ（`app/models.py` やテーブル定義、移行スクリプト）を変更したら、
   `app/mcp/knowledge/schema.md` の該当箇所も必ず更新する**（カラムの増減・型・md/four 差分・座標系など）
 - 集計の定義や SQL 上の注意点が変わったら、`metrics.md` / `sql_notes.md` も併せて見直す
+- 競技規則の変遷は `app/mcp/knowledge/rules/*.yaml` が唯一の情報源。YAML を変更したら
+  `uv run python scripts/generate_rules_md.py` で `rules.md` を生成し直す（`rules.md` は直接編集しない。
+  食い違いは `tests/test_rules_md.py` が検出する）。書き方と対象範囲は `rules/README.md` を参照
 - スキーマの真は `app/models.py` 。knowledge 配下と食い違ったら
   実態（DB / models）を正とし、ドキュメントを合わせる

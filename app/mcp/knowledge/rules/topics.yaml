@@ -15,10 +15,23 @@ topics:
     name_ja: フリーガードゾーン
     name_en: Free Guard Zone (FGZ)
     category: board
-    discipline: both
+    discipline: four
     relevance: high
     wcf_rule_2026: R6
-    description: ハウス手前のガードを、エンド序盤に相手がアウトにすることを制限する規定。
+    description: >-
+      ハウス手前のガードを、エンド序盤に相手がアウトにすることを制限する規定。
+      MD には別の規定がある（md_early_removal）。
+
+  - id: md_early_removal
+    name_ja: MD の序盤のストーン除去の制限
+    name_en: Mixed Doubles - no removal before the fourth stone
+    category: board
+    discipline: md
+    relevance: high
+    wcf_rule_2026: R17
+    description: >-
+      MD で、エンドの 4 投目より前は、置き石やハウス内のストーンを含めてどのストーンもプレー外に出せない規定。
+      4 人制のフリーガードゾーンに当たる。
 
   - id: no_tick
     name_ja: ノーティックショット
@@ -51,10 +64,23 @@ topics:
     name_ja: ブランクエンド後のハンマー
     name_en: Last stone advantage after a blank end
     category: scoring
-    discipline: both
+    discipline: four
     relevance: high
-    wcf_rule_2026: R12
-    description: 両者無得点のエンドの後、次のエンドのハンマーがどちらになるか（4人制と MD で異なる）。
+    wcf_rule_2026: R5
+    description: >-
+      4 人制で、両者無得点のエンドの後もハンマーは移らない（どちらかが得点するまで投球順を保つ）規定。
+      MD は規則が異なる（md_placement_after_blank）。
+
+  - id: md_placement_after_blank
+    name_ja: MD のブランクエンド後の置き石の配置権
+    name_en: Mixed Doubles - placement decision after a blank end
+    category: scoring
+    discipline: md
+    relevance: high
+    wcf_rule_2026: R17
+    description: >-
+      MD で、両者無得点のエンドの後、次のエンドの置き石の配置を決める権利がどちらになるか。
+      配置を決めるチームは通常ハンマーを取るので、ハンマーの推移を左右する。
 
   - id: hammer_determination
     name_ja: 第1エンドのハンマーの決め方

@@ -29,6 +29,8 @@ _DOCS: dict[str, tuple[str, str]] = {
     "schema": ("schema.md", "テーブル定義・カラムの意味・リレーション・md/four 差分"),
     "sql-notes": ("sql_notes.md", "データ上の注意点（NULL の意味・異常値・座標系など）"),
     "metrics": ("metrics.md", "定義済みメトリクスの定義集（ハンマー差分・スチール率など）"),
+    # rules.md は scripts/generate_rules_md.py が rules/*.yaml から生成する（直接編集しない）
+    "rules": ("rules.md", "競技規則の変遷（時期をまたいで比較するときに気をつける規則変更）"),
 }
 
 
@@ -92,7 +94,7 @@ def create_router(limiter: Limiter, rate_limit: str) -> APIRouter:
 
         Args:
             request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）
-            doc: 取得する文書名（"schema" / "sql-notes" / "metrics"）
+            doc: 取得する文書名（"schema" / "sql-notes" / "metrics" / "rules"）
 
         Returns:
             PlainTextResponse: Markdown 本文（media_type は text/markdown）
