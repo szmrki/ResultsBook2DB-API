@@ -1,0 +1,192 @@
+# 規則書の版と収録状況。叩き台（2026-10-18）。
+# 書き方は README.md §3 を参照。
+#
+# 各項目:
+#   id:                  WCF の版（wcf-<年>）
+#   document_date:       規則書の表紙の日付
+#   effective_from:      施行日
+#   effective_from_basis: 施行日の根拠（stated = 本文に明記 / cover_date = 表紙の日付を採用 / unknown）
+#   jca_edition:         対応する JCA 日本語版の年月（翻訳の公開時期で、施行日とは別物）
+#   coverage:            full / major_only / pending / missing
+#   sources:             sources.yaml の id
+#   notes:               対象外と判断した主な変更など、後から見て迷いそうな点
+
+editions:
+  - id: wcf-2026
+    document_date: 2026-09-01
+    effective_from: 2026-09-01
+    effective_from_basis: cover_date  # 本文に施行日の明記なし
+    jca_edition: "2026.09"
+    coverage: full  # 2026-10-18 に全変更点を確認済み
+    sources: [wcf-2026-rules, wcf-2026-changes, jca-2026-09]
+    notes:
+      - C6（持ち時間）は書式の整理のみで、時間の値は変わっていない。
+      - C7（タイムアウト）の変更は、コーチ席の呼び方など運営面のみ（対象外）。
+      - C10（審判）の大幅な書き換えは対象外。
+      - R3（選手の欠員）は、3 人でのプレーが 2 エンドまでに制限され、原則 4 人でプレーすることになった。
+        記録への影響は小さいため対象外（3〜4 投している選手がいるエンドは全体の約 1.5%、2026-10-17 時点の four）。
+      - R8（スウィーピング）は、2 回目以降の違反の罰則のみの変更なので対象外。
+      - R5（投球）の、ティーラインを越えた後にストーンに触れた場合の扱いは、集計に影響しないので対象外。
+      - R17（MD）のパワープレーを宣言するタイミングは、手続きの変更なので対象外。
+
+  - id: wcf-2025
+    coverage: full
+    jca_edition: "2025.09"
+    sources: [jca-2025-09]
+    notes:
+      - WCF 版の原典は未発見。JCA 2025.09 版の「改正の解説」と、WCF 2023→2026 年版の本文比較で確認した。
+      - R8（スウィーピング）・R5（投球）・R14・R17(l) の違反への対応の厳格化は、罰則の変更なので対象外。
+      - R17(j)（MD で置き石を投げた場合の扱い）は手続きの変更なので対象外。
+
+  - id: wcf-2024
+    coverage: full
+    jca_edition: "2024.10"
+    sources: [jca-2024-10]
+    notes:
+      - WCF 版の原典は未発見。JCA 2024.10 版の「改正の解説」と、WCF 2023→2026 年版の本文比較で確認した。
+      - JCA 2024.10 版は 1〜36 ページが取得できない（Wayback の保存版が途中で切れている）。改正の解説は揃っている。
+      - R12(a)（最終エンドで計算上勝てなくなった場合）は、試合を終えるのが should から must になっただけなので対象外。
+      - C3 のユニフォーム・ドレスコードの規定がルールブックから外れた（対象外）。
+
+  - id: wcf-2023
+    document_date: 2023-07
+    effective_from: 2023-07
+    effective_from_basis: cover_date  # 表紙は「July 2023」。本文に施行日の明記なし
+    jca_edition: "2023.10"
+    coverage: full
+    sources: [wcf-2023-rules, wcf-2023-changes, jca-2023-10]
+    notes:
+      - R6（フリーガードゾーン）は句読点の修正のみ。
+      - R8（スウィーピング）は「動いているストーンの前でブラシを持ち上げてはいけない」が加わったのみで対象外。
+      - R12（遅刻したときの扱い）は表の形に書き直され、両チームが遅れた場合が加わった。片方が遅れた場合の扱い
+        （1 エンド実施済みとして 0-1 など）は従来と同じ。まれなので対象外。
+      - C8 の LSD・プレーオフでの先攻後攻の選び方の文言変更は対象外。
+
+  - id: wcf-2022
+    document_date: 2022-10
+    effective_from: 2022-10
+    effective_from_basis: cover_date
+    jca_edition: "2022.11"
+    coverage: full
+    sources: [wcf-2022-rules, wcf-2022-changes, wcf-2022-trial, jca-2022-11]
+    notes:
+      - R17(l)（MD でエンドをやり直すときは元のエンドの選択を引き継ぐ）は手続きの変更なので対象外。
+      - C1(b)（WCF 理事会がチームを大会から除外できる）は対象外。
+
+  - id: wcf-2021
+    document_date: 2021-10
+    effective_from: 2021-10
+    effective_from_basis: cover_date
+    jca_edition: "2021.11"
+    coverage: full
+    sources: [wcf-2021-rules, wcf-2021-changes, jca-2021-11]
+    notes:
+      - R17（MD）の Position A は「同じ置き場所を試合を通して使う」が明記され、置き間違えたときの扱いが加わった。
+        どちらも手続きの変更で、置き場所の候補（3 点）は変わっていないので対象外。
+      - C8 の LSD の投球数の内訳（時計回り・反時計回り）の変更は対象外。
+
+  - id: wcf-2020
+    document_date: 2020-10
+    effective_from: 2020-10
+    effective_from_basis: cover_date
+    jca_edition: "2020.11"
+    coverage: full
+    sources: [wcf-2020-rules, wcf-2020-changes, jca-2020-11]
+    notes:
+      - 規則書は A4 に見開き 2 ページを載せた体裁で、本文の機械的な比較が崩れる。2019→2021 年版を直接比較し、
+        ChangeLog のハイライトで年を振り分けた。
+      - R17(e)（MD で 4 投目より前にストーンをプレー外に出せない）は言い回しの変更のみ。
+      - C8 の LSD の距離の単位が cm から m に変わった（199.6 cm → 1.996 m、値は同じ）。
+      - C6 の持ち時間は車いす MD の値が加わったのみ。休憩中にコーチと話せるようになった変更は対象外。
+      - 用具（デリバリースティック）の規定の追加は、rb2db の大会では使われないので対象外。
+
+  - id: wcf-2019
+    document_date: 2019-10
+    effective_from: 2019-10
+    effective_from_basis: cover_date
+    jca_edition: "2019.10"  # JCA は改定案内のみ
+    coverage: full
+    sources: [wcf-2019-rules, wcf-2019-changes]
+    notes:
+      - 2019 年版より前の WCF 版がないため、2019 年版で何が変わったかは ChangeLog のハイライトだけで判断した。
+      - R12 の遅刻したときの扱い（1 点と 1 エンド実施済みなど）が加わったが、まれなので対象外。
+      - R8(c)（次の投球の前に全員が氷面を掃除してよい）は対象外。
+      - C8 のプレーオフでの先攻後攻・ストーンの色の選び方の追加は対象外。
+
+  - id: wcf-2018
+    document_date: 2018-10
+    effective_from: 2018-10
+    effective_from_basis: cover_date  # 旧サイトの文書名「The Rules of Curling (Oct 2018)」
+    jca_edition: "2018.11"
+    coverage: full
+    sources: [jca-2018-11]
+    notes:
+      - WCF 版の原典は未発見（リンクはあったが保存版がない）。JCA 2018.11 版の全文と改正の解説、
+        WCF 2016→2019 年版の本文比較で確認した。
+      - フリーガードゾーンの 5 ロックルールは 2017 年 10 月の改定で決まり、この版の時期（2018-10）から適用された（wcf-2017 を参照）。
+      - R2（ストーン）の、フリーガードゾーンにあるかの判定で測定してよい場面の追加は対象外。
+      - C2(c) のチーム登録の期限などは対象外。
+
+  - id: wcf-2017
+    document_date: 2017-10
+    effective_from: 2017-10
+    effective_from_basis: cover_date  # JCA の通知に「2017.10 改正 WCF 競技規則」とある
+    jca_edition: "2017.12"  # JCA は改定案内のみ
+    coverage: full
+    sources: [jca-2017-12-notice]
+    notes:
+      - WCF 版の原典は未発見（旧サイトの規則ページは 2018 年まで 2016 年版のままだった）。JCA の 2017.12 の通知
+        （2017.10 改正 WCF 競技規則の解説）と、WCF 2016→2019 年版の本文比較で確認した。
+      - R11（得点）に、算術的に勝てなくなったチームは次のエンドに入れない旨が加わった。試合の終わり方の明確化で、
+        まれなので対象外。
+      - C5（試合の長さ）からタイブレークの記述が削除された（対象外）。
+      - C6 の MD のエンド間の時間（置き石を選手が置く場合 +30 秒）は対象外。
+      - JCA の通知では、JCA 主催大会で WCF の承認済みブラシパッド以外を禁止している（WCF 側はブラシの規定を
+        規則書の外の「承認製品一覧」で管理しており、規則書には現れない）。
+
+  - id: wcf-2016
+    document_date: 2016-10
+    effective_from: 2016-10
+    effective_from_basis: cover_date
+    jca_edition: "2017.12"  # 2016 年に対応する JCA の全文版は未発見
+    coverage: full
+    sources: [wcf-2016-rules, wcf-2016-changes]
+    notes:
+      - R10（用具）から、コーンブルームを使う選手はその試合中同じ種類を使う旨などのブラシの細則が削除された。
+        ブラシの規定は規則書の外（承認製品一覧）に移った。
+      - R11（遅刻したときの扱い）で、相手チームが得るものが「後攻」から「先攻・後攻の選択権」に変わった（まれなので対象外）。
+      - R7（スウィーピング）の動かし方が「左右方向」から「どの方向でもよい」に変わった。スウィーピングの規定は
+        Results Book だけでは効果を分析できない（映像などが必要）ため対象外。
+
+  - id: wcf-2015
+    document_date: 2015-10
+    effective_from: 2015-10
+    effective_from_basis: cover_date
+    jca_edition: "2016.02"  # JCA は改定案内と MD・ブラシの新ルールの案内のみ
+    coverage: full
+    sources: [wcf-2015-rules, wcf-2015-changes, wcf-2015-summary, jca-2016-02-notice]
+    notes:
+      - R15(i)（MD の投球しない選手の位置）が「ホッグラインの内側」から「シートのどこでもよい」に変わった（対象外）。
+      - C6 の持ち時間は車いすの値の変更のみ。
+
+  - id: wcf-2014
+    document_date: 2014-10
+    effective_from: 2014-10
+    effective_from_basis: cover_date
+    jca_edition: "2015.06"  # JCA は改定案内のみ
+    coverage: full
+    sources: [wcf-2014-rules, wcf-2014-changes, jca-2015-06-notice]
+    notes:
+      - Change Log（2011→2014）は Word 形式で変更箇所の書式を読めないため、2011→2014 年版の本文比較で確認した。
+      - R10（用具）に、時間以外の情報を出す電子機器の使用禁止などが加わった（対象外）。
+
+  - id: wcf-2011
+    document_date: 2011-06
+    effective_from: 2011-06
+    effective_from_basis: cover_date
+    coverage: major_only  # 起点の版。これより前からの変更は調べていない
+    sources: [wcf-2011-rules]
+    notes:
+      - 調査の起点。2014 年 10 月版より前の大会（2014 年の冬季五輪など）はこの版の下で行われた。
+      - 主要トピックの状態として、フリーガードゾーンは 5 投目より前（4 ロックルール）。MD の置き石は Position A が 3 点、
+        Position B がティーの後ろ端に接する位置で、パワープレーはない。持ち時間は試合時間（playing time）方式。

@@ -1,0 +1,111 @@
+# ルールの概念（トピック）の一覧。叩き台（2026-10-18）。
+# 書き方は README.md §3 を参照。
+#
+# 各項目:
+#   id:          版をまたいで変わらない ID（条番号に依存させない）
+#   name_ja / name_en
+#   category:    board / scoring / format / time
+#   discipline:  four / md / both
+#   relevance:   データ分析への影響の大きさ（high / medium / low）
+#   wcf_rule_2026: 2026 年版での条番号（参照用。版ごとの番号は changes.yaml の source に書く）
+#   description: この概念が何を扱うか（変遷はここに書かず changes.yaml に書く）
+
+topics:
+  - id: free_guard_zone
+    name_ja: フリーガードゾーン
+    name_en: Free Guard Zone (FGZ)
+    category: board
+    discipline: both
+    relevance: high
+    wcf_rule_2026: R6
+    description: ハウス手前のガードを、エンド序盤に相手がアウトにすることを制限する規定。
+
+  - id: no_tick
+    name_ja: ノーティックショット
+    name_en: No-Tick Shot
+    category: board
+    discipline: four
+    relevance: high
+    wcf_rule_2026: R7
+    description: センターライン上のガードを、エンド序盤に横へずらすことを制限する規定。
+
+  - id: md_positioned_stones
+    name_ja: MD の事前配置ストーン
+    name_en: Mixed Doubles positioned stones
+    category: board
+    discipline: md
+    relevance: high
+    wcf_rule_2026: R17
+    description: MD で各エンド開始時に置くストーン（Position A / B）の位置と、置く側の決め方。
+
+  - id: md_power_play
+    name_ja: MD のパワープレー
+    name_en: Mixed Doubles Power Play
+    category: board
+    discipline: md
+    relevance: high
+    wcf_rule_2026: R17
+    description: MD で事前配置ストーンを横にずらして置ける選択肢。使える回数と条件。
+
+  - id: hammer_after_blank
+    name_ja: ブランクエンド後のハンマー
+    name_en: Last stone advantage after a blank end
+    category: scoring
+    discipline: both
+    relevance: high
+    wcf_rule_2026: R12
+    description: 両者無得点のエンドの後、次のエンドのハンマーがどちらになるか（4人制と MD で異なる）。
+
+  - id: hammer_determination
+    name_ja: 第1エンドのハンマーの決め方
+    name_en: Last Stone Draw (LSD) / Draw Shot Challenge (DSC)
+    category: scoring
+    discipline: both
+    relevance: medium
+    wcf_rule_2026: C8
+    description: 試合開始時のハンマーを決める方法（LSD など）。
+
+  - id: extra_end
+    name_ja: エキストラエンド
+    name_en: Extra end
+    category: scoring
+    discipline: both
+    relevance: medium
+    wcf_rule_2026: R12
+    description: 同点で規定エンドを終えたときの延長の扱い。
+
+  - id: number_of_ends
+    name_ja: エンド数
+    name_en: Number of ends
+    category: format
+    discipline: both
+    relevance: high
+    wcf_rule_2026: C1
+    description: 1試合のエンド数（10 / 8 など）。
+
+  - id: concession
+    name_ja: コンシードの条件
+    name_en: Conceding a game
+    category: format
+    discipline: both
+    relevance: medium
+    wcf_rule_2026: R12
+    description: 試合を途中で終える（コンシードする）ことができる条件。ends の NULL の出方に影響する。
+
+  - id: thinking_time
+    name_ja: 持ち時間
+    name_en: Thinking time
+    category: time
+    discipline: both
+    relevance: low
+    wcf_rule_2026: C6
+    description: 1試合・延長エンドごとの持ち時間。
+
+  - id: timeouts
+    name_ja: タイムアウト
+    name_en: Team time-outs
+    category: time
+    discipline: both
+    relevance: low
+    wcf_rule_2026: C7
+    description: チームタイムアウトの回数と時間。
