@@ -41,8 +41,10 @@ rb2db の利用者が「ある大会がどの規則で行われたか」「規�
 | `topics.yaml` | ルールの概念（版をまたいで変わらない ID） | 概念1つ |
 | `changes.yaml` | 版ごとの変更点 | 変更1件 |
 
-将来追加するもの（段階 2）: `series_months.yaml`（大会シリーズの通常開催月）と
-`event_overrides.yaml`（例外の大会と版の対応）。大会と版の対応づけに使う。
+将来追加するもの（段階 2）: 大会と版の対応づけ。`events` に開始日を追加する
+szmrki/ResultsBook2DB#30 が済めば、開始日と各版の `effective_from` の比較で対応づける。
+それまでの代わりとして `series_months.yaml`（大会シリーズの通常開催月）と
+`event_overrides.yaml`（例外の大会と版の対応）を使う案もある。
 
 原典の PDF そのものは**リポジトリに置かない**（著作権のため）。台帳には URL だけを書く。
 手元の PDF は gitignore 済みの `sources/rules/<publisher>/<元のファイル名>` に置く
