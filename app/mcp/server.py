@@ -130,12 +130,11 @@ def resource_metrics() -> str:
     return knowledge.load("metrics.md")
 
 
+# rules.md は scripts/generate_rules_md.py が rules/*.yaml から生成したもの（直接編集しない）。
+# docstring はそのままリソースの説明として利用者に見えるので、1 行の説明だけにしておく。
 @mcp.resource("rb2db://rules", mime_type="text/markdown")
 def resource_rules() -> str:
-    """競技規則の変遷（時期をまたいで比較するときに気をつける規則変更）。
-
-    rules.md は scripts/generate_rules_md.py が rules/*.yaml から生成したもの。
-    """
+    """競技規則の変遷（時期をまたいで比較するときに気をつける規則変更）。"""
     return knowledge.load("rules.md")
 
 
