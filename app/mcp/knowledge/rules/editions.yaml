@@ -35,9 +35,12 @@ editions:
     sources: [jca-2025-09]
 
   - id: wcf-2024
-    coverage: missing  # WCF 版の原典が未発見。JCA 2024.10 版はある
+    coverage: missing  # WCF 版の原典が未発見
     jca_edition: "2024.10"
     sources: [jca-2024-10]
+    notes:
+      - JCA 2024.10 版は 1〜36 ページが取得できない（Wayback の保存版が途中で切れている）。
+        改正の解説（rule-2024-10-info.pdf）は揃っているので、変更点はそこから拾える見込み。
 
   - id: wcf-2023
     coverage: pending

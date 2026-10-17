@@ -9,7 +9,8 @@
 #   lang:      en / ja
 #   url:       元の URL（404 になっているものもある）
 #   archive:   Wayback Machine の URL（年だけ指定した形は、最も近い保存日時に飛ぶ）
-#   status:    live（元の URL で取得可） / archived（Wayback で確認済み） / unverified（リンクはあったが保存を未確認）
+#   status:    live（元の URL で取得可） / archived（Wayback で確認済み） / partial（一部のファイルが取得できない）
+#   missing_parts: 取得できないファイル（Wayback の保存版がすべて途中で切れているなど）
 #   parts:     ページ範囲で分割されている場合のファイル名
 
 sources:
@@ -49,7 +50,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104837/2022-The-Rules-of-Curling19092022.pdf
     archive: https://web.archive.org/web/2022/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104837/2022-The-Rules-of-Curling19092022.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2022-changes
     publisher: wcf
@@ -57,7 +58,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104846/2022-The-Rules-of-Curling-Change_Log_19092022.pdf
     archive: https://web.archive.org/web/2022/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2022/09/19104846/2022-The-Rules-of-Curling-Change_Log_19092022.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2022-trial
     publisher: wcf
@@ -65,7 +66,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2023/01/24084936/Trial-Rule-2022-2023_19012023.pdf
     archive: https://web.archive.org/web/2023/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2023/01/24084936/Trial-Rule-2022-2023_19012023.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2021-rules
     publisher: wcf
@@ -73,7 +74,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092643/2021-The-Rules-of-Curling.pdf
     archive: https://web.archive.org/web/2021/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092643/2021-The-Rules-of-Curling.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2021-changes
     publisher: wcf
@@ -81,7 +82,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092658/2021-The-Rules-of-Curling-Change-Log.pdf
     archive: https://web.archive.org/web/2021/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2021/10/11092658/2021-The-Rules-of-Curling-Change-Log.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2020-rules
     publisher: wcf
@@ -89,7 +90,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151044/2020-The-Rules-of-Curling.pdf
     archive: https://web.archive.org/web/2020/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151044/2020-The-Rules-of-Curling.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2020-changes
     publisher: wcf
@@ -97,7 +98,7 @@ sources:
     lang: en
     url: https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151057/2020-The-Rules-of-Curling-Change-log.pdf
     archive: https://web.archive.org/web/2020/https://s3.eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2020/10/13151057/2020-The-Rules-of-Curling-Change-log.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2019-rules
     publisher: wcf
@@ -105,7 +106,7 @@ sources:
     lang: en
     url: https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100751/2019-The-Rules-of-Curling.pdf
     archive: https://web.archive.org/web/2019/https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100751/2019-The-Rules-of-Curling.pdf
-    status: unverified
+    status: archived
 
   - id: wcf-2019-changes
     publisher: wcf
@@ -113,10 +114,11 @@ sources:
     lang: en
     url: https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100941/2019-The-Rules-of-Curling-_Changelog.pdf
     archive: https://web.archive.org/web/2019/https://s3-eu-west-1.amazonaws.com/media.worldcurling.org/media.worldcurling.org/wcf_worldcurling/2019/09/17100941/2019-The-Rules-of-Curling-_Changelog.pdf
-    status: unverified
+    status: archived
 
   # ---- JCA 日本語版（全文） -------------------------------------------
   # 2018.11 以前と 2019.10 の改定案内は、必要になった時点で追加する（memo/rule_sources.md に一覧あり）。
+  # -info.pdf は「競技規則改正の解説」（削除・追加を色付きで示した改定案内）。
   - id: jca-2026-09
     publisher: jca
     kind: rules
@@ -141,8 +143,9 @@ sources:
     lang: ja
     url: https://www.curling.or.jp/committee/competition/rule-2024-10-1-36.pdf
     archive: https://web.archive.org/web/20250217210207/https://www.curling.or.jp/committee/competition/rule-2024-10-1-36.pdf
-    status: archived
+    status: partial
     parts: [rule-2024-10-1-36.pdf, rule-2024-10-37-62.pdf, rule-2024-10-63-84.pdf, rule-2024-10-info.pdf]
+    missing_parts: [rule-2024-10-1-36.pdf]  # Wayback の保存版は1つだけで、1 MiB で切れている（2026-10-18 確認）
 
   - id: jca-2023-10
     publisher: jca
