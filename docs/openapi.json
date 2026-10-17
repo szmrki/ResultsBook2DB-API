@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ResultsBook2DB API",
-    "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\n> API 本体は研究室内限定公開です。\n",
-    "version": "1.5.0"
+    "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\nデータを扱ううえでの前提知識（`null` の意味などの注意点・スキーマ解説）は、\nAPI 本体の `GET /v1/notes` から取得できます（研究室内限定公開）。\n\n> API 本体は研究室内限定公開です。\n",
+    "version": "1.6.0"
   },
   "paths": {
     "/v1/four/events": {
@@ -3410,7 +3410,7 @@
           "md / shots"
         ],
         "summary": "ショット一覧を取得",
-        "description": "ショットの一覧を返す。\n\n> **`percent_score` は 0/25/50/75/100 の離散値**です（連続値ではありません）。高い値に偏った分布のため、平均値だけでの比較には注意してください。\n\n> `percent_score` / `turn` の `null` はランダムな欠損ではなく、`type` が `Through` / `no statistics` の**成功率を定義できないショット**に対応します。",
+        "description": "ショットの一覧を返す。\n\n> **`percent_score` は 0/25/50/75/100 の離散値**です。\n\n> `percent_score` / `turn` の `null` はランダムな欠損ではなく、`type` が `Through` / `no statistics` の**成功率を定義できないショット**に対応します。",
         "operationId": "list_shots_v1_md_shots_get",
         "parameters": [
           {
@@ -5437,7 +5437,8 @@
         "enum": [
           "schema",
           "sql-notes",
-          "metrics"
+          "metrics",
+          "rules"
         ],
         "title": "NoteDoc",
         "description": "配信する前提知識ドキュメントの名前。\n\nEnum にしておくことで、定義外の文書名は FastAPI が 422 で弾いてくれる\n（= 任意のファイルパスを URL から渡せないので、パストラバーサル対策も兼ねる）。"
@@ -5464,7 +5465,7 @@
           "url"
         ],
         "title": "NoteResponse",
-        "description": "前提知識ドキュメント一覧の1件分。\n\nAttributes:\n    doc: 文書名（\"schema\" / \"sql-notes\" / \"metrics\"）\n    description: その文書に何が書いてあるかの一行説明\n    url: 本文を取得するための URL"
+        "description": "前提知識ドキュメント一覧の1件分。\n\nAttributes:\n    doc: 文書名（\"schema\" / \"sql-notes\" / \"metrics\" / \"rules\"）\n    description: その文書に何が書いてあるかの一行説明\n    url: 本文を取得するための URL"
       },
       "OrderDirection": {
         "type": "string",
