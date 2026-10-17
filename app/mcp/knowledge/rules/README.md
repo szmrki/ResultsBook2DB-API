@@ -56,11 +56,12 @@ rb2db の利用者が「ある大会がどの規則で行われたか」「規�
 ### 版（`editions.yaml`）
 
 - `id` は WCF の版の年（例: `wcf-2026`）。JCA の日本語版は `jca_edition` に年月で持つ（例: `2026.09`）。
-- `document_date` は規則書の表紙の日付。`effective_from` は施行日で、本文に明記がなければ
+- `document_date` は規則書の表紙の日付（月までしか書かれていない版は `YYYY-MM`）。`effective_from` は施行日で、本文に明記がなければ
   `effective_from_basis` に根拠（`cover_date` など）を書く。
 - `coverage` は収録状況。「書いていない＝変更なし」と誤読されないために必ず書く。
   - `full`: 全変更点を確認済み
   - `major_only`: 主要トピックだけ確認済み（古い版向け）
+  - `drafted`: 下書き済みで、人の確認待ち（除外の判断を含む）
   - `pending`: 原典はあるが未着手
   - `missing`: 原典が見つかっていない
 
