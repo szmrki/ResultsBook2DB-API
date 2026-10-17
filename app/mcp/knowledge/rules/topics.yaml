@@ -47,15 +47,6 @@ topics:
     wcf_rule_2026: R17
     description: MD で事前配置ストーンを横にずらして置ける選択肢。使える回数と条件。
 
-  - id: delivery
-    name_ja: 投球の規定
-    name_en: Delivery
-    category: board
-    discipline: both
-    relevance: low
-    wcf_rule_2026: R5
-    description: ホッグライン違反など、投球が有効とみなされる条件。
-
   - id: sweeping
     name_ja: スウィーピングの規定
     name_en: Sweeping
@@ -63,8 +54,9 @@ topics:
     discipline: both
     relevance: medium
     wcf_rule_2026: R8
-    description: スウィーピングしてよい範囲・方法と、違反したときの扱い。
-
+    description: >-
+      スウィーピングしてよい範囲・方法。投球の結果に効く方法の変更だけを扱う。
+      
   - id: brush_equipment
     name_ja: ブラシ（用具）の規定
     name_en: Brush / sweeping equipment
@@ -118,15 +110,6 @@ topics:
     relevance: medium
     wcf_rule_2026: R12
     description: 試合を途中で終える（コンシードする）ことができる条件。ends の NULL の出方に影響する。
-
-  - id: team_lineup
-    name_ja: 選手の欠員と交代
-    name_en: Team composition, absent players and alternates
-    category: format
-    discipline: four
-    relevance: low
-    wcf_rule_2026: R3
-    description: 選手が欠けたときの投球数の配分と、交代選手の入れ方。選手別の投球数に影響しうる。
 
   - id: thinking_time
     name_ja: 持ち時間
