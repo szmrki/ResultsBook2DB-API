@@ -76,7 +76,8 @@ REST API に加えて、AIコーディングツール（Claude Code 等）から
 - `run_query(sql, db)` — 任意の read-only SQL を実行（`SELECT` / `WITH` のみ）
 - `get_schema(db)` — テーブル定義・カラムの意味・md/four 差分を取得
 
-スキーマ解説・SQL上の注意点・集計定義は MCP リソースとして同梱しています。
+スキーマ解説・SQL上の注意点・集計定義・競技規則の変遷（時期をまたいで比較するときに気をつける規則変更）は
+MCP リソースとして同梱しています。
 同じ内容は REST API の `GET /v1/notes/{doc}` からも取得できます。
 
 > MCP サーバー本体も研究室内限定公開です。
