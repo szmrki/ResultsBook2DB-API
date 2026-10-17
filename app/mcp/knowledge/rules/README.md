@@ -71,6 +71,9 @@ szmrki/ResultsBook2DB#30 が済めば、開始日と各版の `effective_from` �
 
 - `id` は英小文字のスネークケース。**条番号に依存させない**（版ごとに番号が変わるため）。
 - 粒度は「〜のルールはどう変わった？」と聞かれる単位。条・項の単位まで細かくしない。
+- **4 人制と MD で規則の中身が違うものはトピックを分ける**（例: フリーガードゾーンと MD の序盤の除去制限、
+  ブランクエンド後のハンマー）。`both` は同じ規定が両方に当てはまるとき（持ち時間の条など）だけに使う。
+  こうしておくと、トピックの対象がそのまま変更の対象になる。
 - 新しく導入された概念も、導入された時点で ID を付ける（`changes.yaml` に `type: introduced` で記録）。
 - 分割・統合されたときは、`changes.yaml` に `type: split` / `merged` と `related_topics` で記録する。
 
@@ -90,6 +93,7 @@ szmrki/ResultsBook2DB#30 が済めば、開始日と各版の `effective_from` �
 3. 対象範囲（§1）に入るものだけを `changes.yaml` に下書きする（LLM に下書きさせてよい）。
 4. 人が原文と照らし、`verified: true` にする。
 5. その版の `coverage` を更新する。
-6. 生成スクリプトで `rules.md` を作り直す（段階 1 で作成予定）。
+6. `uv run python scripts/generate_rules_md.py` で `app/mcp/knowledge/rules.md` を生成し直す。
+   `rules.md` は MCP リソース `rb2db://rules` と `/v1/notes/rules` で配信される。直接編集しないこと。
 
 一次情報源は WCF 英語版。JCA 日本語版は用語の確認や、WCF 版が見つからない年の補完に使う。

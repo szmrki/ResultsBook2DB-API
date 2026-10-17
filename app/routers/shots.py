@@ -95,8 +95,7 @@ def create_router(
         summary="ショット一覧を取得",
         description=(
             "ショットの一覧を返す。\n\n"
-            "> **`percent_score` は 0/25/50/75/100 の離散値**です（連続値ではありません）。"
-            "高い値に偏った分布のため、平均値だけでの比較には注意してください。\n\n"
+            "> **`percent_score` は 0/25/50/75/100 の離散値**です。\n\n"
             "> `percent_score` / `turn` の `null` はランダムな欠損ではなく、"
             "`type` が `Through` / `no statistics` の"
             "**成功率を定義できないショット**に対応します。"

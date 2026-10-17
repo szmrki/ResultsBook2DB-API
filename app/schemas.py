@@ -286,13 +286,14 @@ class NoteDoc(str, Enum):
     schema = "schema"
     sql_notes = "sql-notes"
     metrics = "metrics"
+    rules = "rules"
 
 
 class NoteResponse(BaseModel):
     """前提知識ドキュメント一覧の1件分。
 
     Attributes:
-        doc: 文書名（"schema" / "sql-notes" / "metrics"）
+        doc: 文書名（"schema" / "sql-notes" / "metrics" / "rules"）
         description: その文書に何が書いてあるかの一行説明
         url: 本文を取得するための URL
     """

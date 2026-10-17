@@ -118,7 +118,7 @@ changes:
     verified: true
 
   - edition: wcf-2018
-    topic: hammer_after_blank
+    topic: md_placement_after_blank
     type: modified
     summary_ja: >-
       MD で、計測しても同距離でブランクエンドになった場合は、置き石の配置を決める権利が次のエンドも変わらない、

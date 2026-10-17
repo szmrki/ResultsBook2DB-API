@@ -11,6 +11,7 @@
     - rb2db://schema     : スキーマ解説
     - rb2db://sql-notes  : SQL 上の注意点（NULL 混入の罠・座標系など）
     - rb2db://metrics    : 定義済みメトリクスの定義集
+    - rb2db://rules      : 競技規則の変遷（時期をまたぐ比較の注意点）
 
 起動（Streamable HTTP）:
     uv run python -m app.mcp.server
@@ -41,7 +42,9 @@ DB は2系統:
 1. まず get_schema でテーブル構造を把握する（リソース rb2db://schema も同じ内容）。
 2. 分析SQLを書く前に rb2db://sql-notes を読む。特に ends 集計での NULL 除外は必須。
 3. 定義済みメトリクス（ハンマー差分など）は rb2db://metrics の定義に合わせる。
-4. run_query で SELECT / WITH のクエリを実行する。
+4. 年や大会をまたいで集計・比較するときは rb2db://rules を読み、間に規則変更
+   （5 ロックルール・ノーティック・MD の置き石の位置など）が挟まっていないか確かめる。
+5. run_query で SELECT / WITH のクエリを実行する。
 
 制約:
 - read-only のみ（SELECT / WITH で始まる単一文）。
@@ -125,6 +128,15 @@ def resource_sql_notes() -> str:
 def resource_metrics() -> str:
     """定義済みメトリクスの定義集（ハンマー差分・スチール率など）。"""
     return knowledge.load("metrics.md")
+
+
+@mcp.resource("rb2db://rules", mime_type="text/markdown")
+def resource_rules() -> str:
+    """競技規則の変遷（時期をまたいで比較するときに気をつける規則変更）。
+
+    rules.md は scripts/generate_rules_md.py が rules/*.yaml から生成したもの。
+    """
+    return knowledge.load("rules.md")
 
 
 def main() -> None:
