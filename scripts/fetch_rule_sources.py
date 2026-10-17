@@ -21,9 +21,17 @@ Wayback には同じ URL の保存版が複数あることが多く、古い保�
 （当時の収集の上限と思われる）。そのため保存版の一覧（CDX API）を引き、サイズの大きい順に試す。
 取得したファイルは「最後まであるか」（PDF の終端の印 %%EOF があるか）も確かめる。
 
+旧 WCF サイト（〜2019）は /download/?dl=<記号> の形でファイルを配っていて、
+URL からファイル名が作れない。
+しかも同じ記号のまま中身が差し替えられていることがある（サイズの大きい保存版が目当ての版とは限らない）。
+そのため台帳では次の項目を使えるようにしてある:
+    filename: 保存するファイル名（URL から作れないとき）
+    format:   pdf（既定） / doc（Word 形式。旧 Change Log の一部）
+    archive:  保存日時まで（14 桁）書いてあれば、その保存版を最優先で試す
+
 保存先:
     sources/rules/<publisher>/<ファイル名>
-    （ファイル名は台帳の url の末尾。分割版は parts に並んだ名前）
+    （ファイル名は台帳の filename、無ければ url の末尾。分割版は parts に並んだ名前）
 
 使い方:
   # 台帳の全件を取得（既にあるファイルは飛ばす）
@@ -70,6 +78,9 @@ MAX_CAPTURES = 3
 # 古い保存版が切れるときのサイズ（1 MiB ちょうど）
 TRUNCATED_SIZE = 1024 * 1024
 
+# 旧 Word 形式（.doc）のファイルの先頭に必ずある印（OLE 複合ファイルの署名）
+DOC_SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
 # サイトによってはブラウザ以外からのアクセスを弾くので、一般的なブラウザを名乗る。
 HEADERS = {"User-Agent": "Mozilla/5.0 (rb2db rule-sources fetcher)"}
 
@@ -108,7 +119,8 @@ def load_ledger(path: Path) -> list[dict]:
 def filenames_of(source: dict) -> list[str]:
     """原典が持つファイル名の一覧を返す。
 
-    分割版（parts あり）はその全部、そうでなければ url の末尾のファイル名1つ。
+    分割版（parts あり）はその全部、filename の指定があればそれ、
+    どちらも無ければ url の末尾のファイル名1つ。
 
     Args:
         source: 台帳の1件
@@ -118,6 +130,8 @@ def filenames_of(source: dict) -> list[str]:
     """
     if source.get("parts"):
         return list(source["parts"])
+    if source.get("filename"):
+        return [source["filename"]]
     return [source["url"].rsplit("/", 1)[1]]
 
 
@@ -137,21 +151,25 @@ def replace_filename(url: str, filename: str) -> str:
     return url.rsplit("/", 1)[0] + "/" + filename
 
 
-def is_complete_pdf(content: bytes) -> bool:
-    """PDF が最後まで揃っているかを判定する。
+def is_complete(content: bytes, fmt: str = "pdf") -> bool:
+    """ファイルが目的の形式で、最後まで揃っているかを判定する。
 
     PDF は先頭が "%PDF"、末尾近くに終端の印 "%%EOF" がある決まり。
     途中で切れたファイルは "%%EOF" を持たない。念のため 1 MiB ちょうどのファイルも疑う。
+    Word 形式（doc）は先頭の署名だけを確かめる（終端の印が無いので、切れていても判別しにくい）。
 
     Args:
         content: ファイルの中身
+        fmt:     "pdf" か "doc"
 
     Returns:
-        最後まで揃っていれば True
+        目的の形式で最後まで揃っていれば True
     """
-    if content[:4] != b"%PDF":
-        return False
     if len(content) == TRUNCATED_SIZE:
+        return False
+    if fmt == "doc":
+        return content[:8] == DOC_SIGNATURE
+    if content[:4] != b"%PDF":
         return False
     # 終端の印の後ろに改行などが少し付くことがあるので、末尾 1 KB の中を探す
     return b"%%EOF" in content[-1024:]
@@ -160,7 +178,9 @@ def is_complete_pdf(content: bytes) -> bool:
 def wayback_candidates(source: dict, original_url: str) -> list[str]:
     """Wayback Machine から原本を取るための URL の候補を、試す順に返す。
 
-    CDX API（保存版の一覧を返す API）で保存版を引き、サイズの大きい順に並べる。
+    台帳の archive に保存日時が 14 桁で書いてあれば、それを最優先で試す
+    （版を確かめて選んだ保存版）。
+    続いて CDX API（保存版の一覧を返す API）で保存版を引き、サイズの大きい順に並べる。
     CDX の length は圧縮後のサイズだが、大小の比較には使える。
     CDX が使えないときは、台帳の archive にある日時（無ければ「どれでもよい」の "2"）を使う。
     Wayback は指定した日時に最も近い保存版に自動で飛ぶ。
@@ -176,6 +196,11 @@ def wayback_candidates(source: dict, original_url: str) -> list[str]:
     # URL に `id_` を付けると、閲覧用の枠を付けずに原本そのものを返す
     def raw(timestamp: str) -> str:
         return f"https://web.archive.org/web/{timestamp}id_/{original_url}"
+
+    # archive の <日時> 部分。https://web.archive.org/web/<日時>/<元のURL> の形
+    m = re.match(r"https?://web\.archive\.org/web/(\d+)", source.get("archive", ""))
+    ledger_ts = m.group(1) if m else ""
+    pinned = [raw(ledger_ts)] if len(ledger_ts) == 14 else []
 
     try:
         resp = requests.get(
@@ -196,27 +221,25 @@ def wayback_candidates(source: dict, original_url: str) -> list[str]:
 
     if captures:
         captures.sort(key=lambda c: c[1], reverse=True)  # サイズの大きい順
-        return [raw(ts) for ts, _ in captures[:MAX_CAPTURES]]
+        by_size = [raw(ts) for ts, _ in captures[:MAX_CAPTURES]]
+        return pinned + [u for u in by_size if u not in pinned]
 
-    # CDX が使えなかったときの予備: 台帳の archive の日時を使う
-    timestamp = "2"
-    m = re.match(r"https?://web\.archive\.org/web/(\d+)", source.get("archive", ""))
-    if m:
-        timestamp = m.group(1)
-    return [raw(timestamp)]
+    # CDX が使えなかったときの予備: 台帳の archive の日時（無ければ "2"）を使う
+    return pinned or [raw(ledger_ts or "2")]
 
 
-def download_pdf(url: str) -> bytes | None:
-    """URL から PDF を取得する。PDF でない・途中で切れている場合は None を返す。
+def download(url: str, fmt: str = "pdf") -> bytes | None:
+    """URL からファイルを取得する。目的の形式でない・途中で切れている場合は None を返す。
 
     一時的なエラー（5xx・タイムアウト・接続エラー）は、間隔を空けて再試行する。
     404 などは再試行しても変わらないので、すぐに諦める。
 
     Args:
         url: 取得する URL
+        fmt: "pdf" か "doc"
 
     Returns:
-        PDF の中身（バイト列）。取得できない・PDF でない場合は None
+        ファイルの中身（バイト列）。取得できない・目的の形式でない場合は None
     """
     for attempt in range(MAX_RETRIES + 1):
         try:
@@ -227,7 +250,7 @@ def download_pdf(url: str) -> bytes | None:
         if resp is not None and resp.status_code < 500:
             # 2xx でも中身が PDF とは限らない（エラーページの HTML が返ることがある）。
             # 途中で切れた PDF も使えないので、最後まで揃っているかまで確かめる。
-            if resp.ok and is_complete_pdf(resp.content):
+            if resp.ok and is_complete(resp.content, fmt):
                 return resp.content
             return None
 
@@ -259,15 +282,20 @@ def fetch_source(source: dict, force: bool) -> list[Result]:
     for filename in filenames_of(source):
         dest = dest_dir / filename
         # 既にあっても、途中で切れているファイルは取り直す
-        if dest.exists() and not force and is_complete_pdf(dest.read_bytes()):
+        fmt = source.get("format", "pdf")
+        if dest.exists() and not force and is_complete(dest.read_bytes(), fmt):
             results.append(Result(source["id"], filename, "skipped", "既にあります"))
             continue
 
-        original_url = replace_filename(source["url"], filename)
+        # filename を指定した原典は URL がファイル名と無関係なので、url をそのまま使う
+        if source.get("filename"):
+            original_url = source["url"]
+        else:
+            original_url = replace_filename(source["url"], filename)
         print(f"  {source['id']}: {filename}")
 
         # 1. 元の URL
-        content = download_pdf(original_url)
+        content = download(original_url, fmt)
         status = "original"
         time.sleep(REQUEST_INTERVAL)
 
@@ -276,7 +304,7 @@ def fetch_source(source: dict, force: bool) -> list[Result]:
             status = "wayback"
             for url in wayback_candidates(source, original_url):
                 time.sleep(REQUEST_INTERVAL)
-                content = download_pdf(url)
+                content = download(url, fmt)
                 if content is not None:
                     break
 

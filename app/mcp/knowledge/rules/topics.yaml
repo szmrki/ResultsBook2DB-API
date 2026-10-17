@@ -4,7 +4,7 @@
 # 各項目:
 #   id:          版をまたいで変わらない ID（条番号に依存させない）
 #   name_ja / name_en
-#   category:    board / scoring / format / time / equipment
+#   category:    board / scoring / format / time
 #   discipline:  four / md / both
 #   relevance:   データ分析への影響の大きさ（high / medium / low）
 #   wcf_rule_2026: 2026 年版での条番号（参照用。版ごとの番号は changes.yaml の source に書く）
@@ -46,25 +46,6 @@ topics:
     relevance: high
     wcf_rule_2026: R17
     description: MD で事前配置ストーンを横にずらして置ける選択肢。使える回数と条件。
-
-  - id: sweeping
-    name_ja: スウィーピングの規定
-    name_en: Sweeping
-    category: equipment
-    discipline: both
-    relevance: medium
-    wcf_rule_2026: R8
-    description: >-
-      スウィーピングしてよい範囲・方法。投球の結果に効く方法の変更だけを扱う。
-      
-  - id: brush_equipment
-    name_ja: ブラシ（用具）の規定
-    name_en: Brush / sweeping equipment
-    category: equipment
-    discipline: both
-    relevance: medium
-    wcf_rule_2026: R11
-    description: 使用できるブラシ・パッドの条件。投球の伸びや曲がりに影響しうる。
 
   - id: hammer_after_blank
     name_ja: ブランクエンド後のハンマー

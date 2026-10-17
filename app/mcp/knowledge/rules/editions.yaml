@@ -112,3 +112,81 @@ editions:
       - R12 の遅刻したときの扱い（1 点と 1 エンド実施済みなど）が加わったが、まれなので対象外。
       - R8(c)（次の投球の前に全員が氷面を掃除してよい）は対象外。
       - C8 のプレーオフでの先攻後攻・ストーンの色の選び方の追加は対象外。
+
+  - id: wcf-2018
+    document_date: 2018-10
+    effective_from: 2018-10
+    effective_from_basis: cover_date  # 旧サイトの文書名「The Rules of Curling (Oct 2018)」
+    jca_edition: "2018.11"
+    coverage: full
+    sources: [jca-2018-11]
+    notes:
+      - WCF 版の原典は未発見（リンクはあったが保存版がない）。JCA 2018.11 版の全文と改正の解説、
+        WCF 2016→2019 年版の本文比較で確認した。
+      - フリーガードゾーンの 5 ロックルールは 2017 年 10 月の改定で決まり、この版の時期（2018-10）から適用された（wcf-2017 を参照）。
+      - R2（ストーン）の、フリーガードゾーンにあるかの判定で測定してよい場面の追加は対象外。
+      - C2(c) のチーム登録の期限などは対象外。
+
+  - id: wcf-2017
+    document_date: 2017-10
+    effective_from: 2017-10
+    effective_from_basis: cover_date  # JCA の通知に「2017.10 改正 WCF 競技規則」とある
+    jca_edition: "2017.12"  # JCA は改定案内のみ
+    coverage: full
+    sources: [jca-2017-12-notice]
+    notes:
+      - WCF 版の原典は未発見（旧サイトの規則ページは 2018 年まで 2016 年版のままだった）。JCA の 2017.12 の通知
+        （2017.10 改正 WCF 競技規則の解説）と、WCF 2016→2019 年版の本文比較で確認した。
+      - R11（得点）に、算術的に勝てなくなったチームは次のエンドに入れない旨が加わった。試合の終わり方の明確化で、
+        まれなので対象外。
+      - C5（試合の長さ）からタイブレークの記述が削除された（対象外）。
+      - C6 の MD のエンド間の時間（置き石を選手が置く場合 +30 秒）は対象外。
+      - JCA の通知では、JCA 主催大会で WCF の承認済みブラシパッド以外を禁止している（WCF 側はブラシの規定を
+        規則書の外の「承認製品一覧」で管理しており、規則書には現れない）。
+
+  - id: wcf-2016
+    document_date: 2016-10
+    effective_from: 2016-10
+    effective_from_basis: cover_date
+    jca_edition: "2017.12"  # 2016 年に対応する JCA の全文版は未発見
+    coverage: full
+    sources: [wcf-2016-rules, wcf-2016-changes]
+    notes:
+      - R10（用具）から、コーンブルームを使う選手はその試合中同じ種類を使う旨などのブラシの細則が削除された。
+        ブラシの規定は規則書の外（承認製品一覧）に移った。
+      - R11（遅刻したときの扱い）で、相手チームが得るものが「後攻」から「先攻・後攻の選択権」に変わった（まれなので対象外）。
+      - R7（スウィーピング）の動かし方が「左右方向」から「どの方向でもよい」に変わった。スウィーピングの規定は
+        Results Book だけでは効果を分析できない（映像などが必要）ため対象外。
+
+  - id: wcf-2015
+    document_date: 2015-10
+    effective_from: 2015-10
+    effective_from_basis: cover_date
+    jca_edition: "2016.02"  # JCA は改定案内と MD・ブラシの新ルールの案内のみ
+    coverage: full
+    sources: [wcf-2015-rules, wcf-2015-changes, wcf-2015-summary, jca-2016-02-notice]
+    notes:
+      - R15(i)（MD の投球しない選手の位置）が「ホッグラインの内側」から「シートのどこでもよい」に変わった（対象外）。
+      - C6 の持ち時間は車いすの値の変更のみ。
+
+  - id: wcf-2014
+    document_date: 2014-10
+    effective_from: 2014-10
+    effective_from_basis: cover_date
+    jca_edition: "2015.06"  # JCA は改定案内のみ
+    coverage: full
+    sources: [wcf-2014-rules, wcf-2014-changes, jca-2015-06-notice]
+    notes:
+      - Change Log（2011→2014）は Word 形式で変更箇所の書式を読めないため、2011→2014 年版の本文比較で確認した。
+      - R10（用具）に、時間以外の情報を出す電子機器の使用禁止などが加わった（対象外）。
+
+  - id: wcf-2011
+    document_date: 2011-06
+    effective_from: 2011-06
+    effective_from_basis: cover_date
+    coverage: major_only  # 起点の版。これより前からの変更は調べていない
+    sources: [wcf-2011-rules]
+    notes:
+      - 調査の起点。2014 年 10 月版より前の大会（2014 年の冬季五輪など）はこの版の下で行われた。
+      - 主要トピックの状態として、フリーガードゾーンは 5 投目より前（4 ロックルール）。MD の置き石は Position A が 3 点、
+        Position B がティーの後ろ端に接する位置で、パワープレーはない。持ち時間は試合時間（playing time）方式。

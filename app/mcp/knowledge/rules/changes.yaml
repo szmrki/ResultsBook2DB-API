@@ -67,3 +67,84 @@ changes:
       rule: R7
       page: 12
     verified: true
+
+  - edition: wcf-2015
+    topic: md_positioned_stones
+    type: modified
+    summary_ja: >-
+      ハウス内の事前配置ストーン（Position B）の位置が、ティー（ハウスの中心）の後ろ端に接する位置から、
+      4 フィートの円の後方（ストーンの後ろ端を 4 フィートの円の後ろ端に合わせる位置）に移った。
+    before: センターライン上で、ストーンの前端がティーの後ろ端に接する位置。
+    after: センターライン上で、ストーンの後ろ端が 4 フィートの円の後ろ端にそろう位置。
+    data_impact: >-
+      rb2db の座標系で計算すると、ハウス内の置き石の中心は変更前 y ≈ 38.55、変更後 y ≈ 38.87（計算値）。
+      2026-10-11 時点の md データでは y ≈ 38.83〜38.87 に集まっており、変更後の位置と一致する。
+      md のデータは WMDCC2016（2016 年 4 月）からなので、すべて変更後の大会。
+    source:
+      doc: wcf-2015-rules
+      rule: R15 (f) (ii)
+    verified: true
+
+  - edition: wcf-2015
+    topic: md_power_play
+    type: introduced
+    summary_ja: >-
+      MD にパワープレーが新設された。1 試合に 1 回、置き石の配置を決める権利を持つチームが選べ、
+      ハウス内の置き石をハウスの左右どちらかに（後ろ端をティーラインに付けて）、ガードの置き石を同じ側に置く。
+      エキストラエンドでは使えない。
+    data_impact: >-
+      ends.is_power_play が意味を持つのはこの版以降。md のデータは WMDCC2016 からなので、すべてパワープレーのある規則の下で行われている。
+    source:
+      doc: wcf-2015-rules
+      rule: R15 (f) (iii)
+    verified: true
+
+  - edition: wcf-2017
+    topic: free_guard_zone
+    type: modified
+    summary_ja: >-
+      フリーガードゾーンの保護が、エンドの 5 投目より前（4 ロックルール）から 6 投目より前（5 ロックルール）に延びた。
+      2017 年 10 月の改定で決まり、2018 年 10 月から適用された。
+    before: 5 投目より前に、相手のフリーガードゾーンのストーンをプレー外に出してはいけない（4 ロックルール）。
+    after: 6 投目より前に、相手のフリーガードゾーンのストーンをプレー外に出してはいけない（5 ロックルール）。
+    data_impact: >-
+      4 人制では 2018-19 シーズン（2018 年 10 月以降）の大会から 5 ロックルール。rb2db の four のうち、
+      ECC2017（2017 年 11 月）と WMCC2018・WWCC2018・WJCC2018（2018 年 3 月）は 4 ロックルールで行われた。
+      序盤のガードの残り方やショットの種類、ブランクエンドの割合を時期をまたいで比べるときは分けること。
+      MD は別の規定（4 投目より前は置き石を含めてプレー外に出せない）なので関係しない。
+    source:
+      doc: jca-2017-12-notice
+      rule: R6 (b)
+    verified: true
+
+  - edition: wcf-2018
+    topic: hammer_after_blank
+    type: modified
+    summary_ja: >-
+      MD で、計測しても同距離でブランクエンドになった場合は、置き石の配置を決める権利が次のエンドも変わらない、
+      という例外が加わった。それまでは、ブランクエンドになれば同距離の場合も配置を決める権利が移っていた。
+    data_impact: >-
+      同距離によるブランクエンドはまれだが、ハンマー（color_hammer）の推移の規則そのものが変わる。
+      rb2db を生成するシステムは現行の規則（同距離なら配置を決める権利が移らない）に合わせて処理しているため、
+      この版より前の md の大会（WMDCC2016・WMDCC2017・WMDCC2018）では旧規則（ブランクなら同距離でも権利が移る）で
+      処理する必要がある。
+    source:
+      doc: jca-2018-11
+      rule: R15 (g) (iii)
+    verified: true
+
+  - edition: wcf-2014
+    topic: thinking_time
+    type: modified
+    summary_ja: >-
+      持ち時間の方式が、試合時間（playing time。投球中も時計が進み、10 エンドで 73 分）から、
+      考慮時間（thinking time。投球中は時計が止まり、10 エンドで 38 分）に変わった。
+    before: 10 エンドで 73 分、8 エンドで 59 分、MD は 46 分の試合時間（playing time）。
+    after: 10 エンドで 38 分、8 エンドで 30 分、MD は 22 分の考慮時間（thinking time）。延長は 1 エンドごとに 4 分 30 秒（MD は 3 分）。
+    data_impact: >-
+      2026-10 時点の rb2db には時間の記録がないので、集計への影響はない。将来、残り時間や使用時間を取り込む場合は、
+      この版より前（2014 年冬季五輪など）と後で時間の意味が異なるので、そのまま比べないこと。
+    source:
+      doc: wcf-2014-rules
+      rule: C6 (a)
+    verified: true
