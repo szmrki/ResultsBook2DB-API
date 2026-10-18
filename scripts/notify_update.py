@@ -45,6 +45,7 @@ import os
 import re
 import sqlite3
 from datetime import datetime, timezone
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -273,8 +274,12 @@ def _get_discrete_distribution(
         table: 対象テーブル名
         column: 対象カラム名
 
+    NULL も「NULL」という1つの値として数える。NULL を除くと、全部 NULL だった列に
+    値が入った場合（例: スコアシートのみだった大会の shots.type が埋まった）に、
+    修正前の分布が空になって比較から漏れてしまうため。
+
     Returns:
-        dict[str, dict[str, int]]: {大会名: {値: 件数}} の辞書。
+        dict[str, dict[str, int]]: {大会名: {値: 件数}} の辞書（NULL は "NULL" をキーにする）。
             テーブルまたはカラムが存在しない場合は空辞書。
     """
     try:
@@ -283,7 +288,6 @@ def _get_discrete_distribution(
         sql = (
             f"SELECT events.name, {table}.{column}, COUNT(*) "  # noqa: S608
             f"{join_sql} "
-            f"WHERE {table}.{column} IS NOT NULL "
             f"GROUP BY events.name, {table}.{column}"
         )
         rows = conn.execute(sql).fetchall()
@@ -291,10 +295,11 @@ def _get_discrete_distribution(
         # テーブルまたはカラムが存在しない（md/four スキーマ差など）
         return {}
 
-    # {大会名: {値の文字列: 件数}} に変換
+    # {大会名: {値の文字列: 件数}} に変換（NULL は "NULL" という文字列にする）
     result: dict[str, dict[str, int]] = {}
     for event_name, value, cnt in rows:
-        result.setdefault(event_name, {})[str(value)] = cnt
+        key = "NULL" if value is None else str(value)
+        result.setdefault(event_name, {})[key] = cnt
     return result
 
 
@@ -363,6 +368,27 @@ def _get_string_sets(
     return result
 
 
+def _avg_gap(before: dict[str, float] | None, after: dict[str, float] | None) -> float:
+    """連続値の統計量の前後で、AVG の差の大きさを返す（並べ替え用）。
+
+    片方が None（その大会の値が全部 NULL）のときは、ある方の AVG の大きさを差とみなす。
+
+    Args:
+        before: 修正前の統計量（{"avg", "min", "max"}）。値が無ければ None
+        after:  修正後の統計量。値が無ければ None
+
+    Returns:
+        float: AVG の差の絶対値
+    """
+    if before is None and after is None:
+        return 0.0
+    if before is None:
+        return abs(after["avg"])  # type: ignore[index]
+    if after is None:
+        return abs(before["avg"])
+    return abs(after["avg"] - before["avg"])
+
+
 def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
     """件数が変わらない値修正を、大会ごとの集計比較で検出する。
 
@@ -395,6 +421,12 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
     string_results: list[dict] = []
 
     try:
+        # 比べる大会は「両方の DB の events にある大会」で決める。
+        # 集計結果に出てきた大会で決めると、修正前は値が全部 NULL だった大会
+        # （集計結果に出てこない大会）が比較から漏れてしまう。
+        # 片方にしかない大会は、件数の変化（大会の追加・削除）として別に扱われる。
+        common_events = get_event_names(prev_conn) & get_event_names(new_conn)
+
         for col_key, kind in COLUMN_KIND.items():
             table, column = col_key.split(".", 1)
 
@@ -402,14 +434,13 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
                 prev_dist = _get_discrete_distribution(prev_conn, table, column)
                 new_dist = _get_discrete_distribution(new_conn, table, column)
 
-                # 両方に存在する大会のみ比較（片方にしかない大会は件数変化として扱われる）
-                common_events = set(prev_dist) & set(new_dist)
-                changes = []
+                changes: list[dict[str, Any]] = []
                 total_diff_count = 0
 
                 for event_name in sorted(common_events):
-                    p = prev_dist[event_name]
-                    n = new_dist[event_name]
+                    # 行が1件もない大会は空の分布として扱う
+                    p = prev_dist.get(event_name, {})
+                    n = new_dist.get(event_name, {})
                     all_values = set(p) | set(n)
                     # 値ごとに before/after を比較
                     diffs = {
@@ -441,32 +472,47 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
                 new_stats = _get_continuous_stats(new_conn, table, column)
 
                 threshold = CONTINUOUS_THRESHOLD.get(col_key, 0.5)
-                common_events = set(prev_stats) & set(new_stats)
                 changes = []
                 total_avg_diff = 0.0
 
                 for event_name in sorted(common_events):
-                    p = prev_stats[event_name]
-                    n = new_stats[event_name]
-                    avg_diff = abs(n["avg"] - p["avg"])
+                    p_stats = prev_stats.get(event_name)
+                    n_stats = new_stats.get(event_name)
+                    if p_stats is None and n_stats is None:
+                        continue  # 前後とも値が全部 NULL（またはその大会の行がない）
+                    if p_stats is None or n_stats is None:
+                        # 片方だけ値がある = 全部 NULL だった値が入った（またはその逆）。
+                        # 閾値に関係なく変化として扱う。値がない側は None で表す。
+                        total_avg_diff += _avg_gap(p_stats, n_stats)
+                        changes.append({
+                            "event": event_name,
+                            "before": (
+                                {k: round(v, 4) for k, v in p_stats.items()} if p_stats else None
+                            ),
+                            "after": (
+                                {k: round(v, 4) for k, v in n_stats.items()} if n_stats else None
+                            ),
+                        })
+                        continue
+                    avg_diff = abs(n_stats["avg"] - p_stats["avg"])
                     # AVG が閾値超・AVG の符号変化・MIN/MAX の符号変化のいずれかで変化あり。
                     # AVG の符号変化により avg≈0 の x 座標の符号反転も検出できる。
                     sign_changed = (
-                        (p["avg"] < 0) != (n["avg"] < 0)
-                        or (p["min"] < 0) != (n["min"] < 0)
-                        or (p["max"] < 0) != (n["max"] < 0)
+                        (p_stats["avg"] < 0) != (n_stats["avg"] < 0)
+                        or (p_stats["min"] < 0) != (n_stats["min"] < 0)
+                        or (p_stats["max"] < 0) != (n_stats["max"] < 0)
                     )
                     if avg_diff > threshold or sign_changed:
                         total_avg_diff += avg_diff
                         changes.append({
                             "event": event_name,
-                            "before": {k: round(v, 4) for k, v in p.items()},
-                            "after": {k: round(v, 4) for k, v in n.items()},
+                            "before": {k: round(v, 4) for k, v in p_stats.items()},
+                            "after": {k: round(v, 4) for k, v in n_stats.items()},
                         })
 
                 if changes:
                     changes.sort(
-                        key=lambda c: abs(c["after"]["avg"] - c["before"]["avg"]),
+                        key=lambda c: _avg_gap(c["before"], c["after"]),
                         reverse=True,
                     )
                     continuous_results.append({
@@ -482,15 +528,15 @@ def detect_value_changes(prev_file: str, new_file: str) -> list[dict]:
             prev_sets = _get_string_sets(prev_conn, table, column)
             new_sets = _get_string_sets(new_conn, table, column)
 
-            common_events = set(prev_sets) & set(new_sets)
             changes = []
             total_diff_count = 0
 
             for event_name in sorted(common_events):
-                p = prev_sets[event_name]
-                n = new_sets[event_name]
-                removed = sorted(p - n)
-                added = sorted(n - p)
+                # 値が全部 NULL の大会は空集合として扱う（埋まったときに added として検出される）
+                p_set = prev_sets.get(event_name, set())
+                n_set = new_sets.get(event_name, set())
+                removed = sorted(p_set - n_set)
+                added = sorted(n_set - p_set)
                 if removed or added:
                     total_diff_count += len(removed) + len(added)
                     changes.append({
