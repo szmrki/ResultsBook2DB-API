@@ -1,6 +1,7 @@
 """games ルーター。試合の一覧・単一取得・配下のエンド一覧・LSD一覧を提供する。"""
 
 from collections.abc import Callable, Generator
+from datetime import date
 from typing import Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -20,6 +21,7 @@ from app.schemas import (
     LsdResponse,
     LsdSortField,
     OrderDirection,
+    StageType,
 )
 
 
@@ -54,6 +56,12 @@ def create_router(
         team: str | None = None,
         team_a: str | None = None,
         team_b: str | None = None,
+        stage_type: StageType | None = None,
+        stage: str | None = None,
+        group_name: str | None = None,
+        sheet: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[GameResponse]:
         """試合一覧を取得する。
@@ -71,6 +79,14 @@ def create_router(
                 （省略可。team_a と両方指定したときのみ機能）。
                 team_a と team_b を両方指定すると、両チームが対戦した試合を返す
                 （red / yellow の並び順は問わない。いずれも部分一致）
+            stage_type: ステージの分類で絞り込み
+                （round_robin / playoff / relegation / other、省略可）
+            stage: ステージ名の部分一致で絞り込み（省略可）。表記ゆれがあるため、
+                例えば "semi" で Semi-final / SEMIFINAL / Semifinal をまとめて拾える
+            group_name: グループ名の完全一致で絞り込み（例: "A"、省略可）
+            sheet: シート名の完全一致で絞り込み（例: "A"、省略可）
+            date_from: 試合日の範囲指定・始点（YYYY-MM-DD、この日を含む。省略可）
+            date_to: 試合日の範囲指定・終点（YYYY-MM-DD、この日を含む。省略可）
             db: DB セッション（依存性注入）
 
         Returns:
@@ -99,6 +115,19 @@ def create_router(
                     ),
                 )
             )
+        if stage_type is not None:
+            query = query.filter(Game.stage_type == stage_type)
+        if stage is not None:
+            query = query.filter(Game.stage.ilike(f"%{stage}%"))
+        if group_name is not None:
+            query = query.filter(Game.group_name == group_name)
+        if sheet is not None:
+            query = query.filter(Game.sheet == sheet)
+        # date は "YYYY-MM-DD" の文字列なので、isoformat() と文字列のまま大小比較できる
+        if date_from is not None:
+            query = query.filter(Game.date >= date_from.isoformat())
+        if date_to is not None:
+            query = query.filter(Game.date <= date_to.isoformat())
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Game, sort.value)))

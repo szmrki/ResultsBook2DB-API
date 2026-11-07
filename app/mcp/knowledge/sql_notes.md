@@ -1,7 +1,7 @@
 # rb2db SQL 上の注意点
 
 分析用SQLを書く際に、ラボ全員が同じ正しい前提を持つための注意点集。
-記載の件数はすべて実データでの実測値（four は 2026-11-02、md は 2026-10-18 時点）。
+記載の件数はすべて実データでの実測値（four・md とも 2026-11-06 版の DB）。
 
 ---
 
@@ -119,7 +119,7 @@ four の実測分布（全 578,682 投球）:
 | `Through` | 2,223 | **2,209（99%）** |
 | `no statistics` | 51 | **50（98%）** |
 | `not played` | 12 | **12（100%）** |
-| その他 | — | 計 408 件。各タイプに少数ずつ散る（記録漏れ） |
+| その他 | — | 計 408 件。各タイプに少数ずつ散る。うち 340 件は注記（§10）の付いた投球 |
 
 `turn`（ターン方向）の NULL 1,139 件も、**1,099 件が `Through`、36 件が `no statistics`**、3 件が `not played`（残り1件は `type` も NULL）。
 → 成功率やターンを集計するときは `type NOT IN ('Through', 'no statistics')` で
@@ -169,21 +169,21 @@ MD のハンマー推移を追う集計ではこの違いに注意。
 
 ---
 
-## 8. `lsds.player_name` の記号混入（既知のバグ）
+## 8. LSD の回転方向（`lsds.turn`）
 
-`lsds.player_name` に **↻ 記号**（ターン方向を表す）が混入している行がある。
+LSD では、各チームが時計回り（`cw`）と反時計回り（`ccw`）を1投ずつ投げる。
+`lsds.turn` はその回転方向を表す。
 
-**これはデータ生成側の既知のバグであり、将来的に修正予定。**
-現時点で選手名を扱う集計（GROUP BY、文字列マッチ、他テーブルとの突合）では、
-**同一選手が別人として分裂する**ため注意。
+- 実測: 試合×チームごとに、必ず `cw` 1投・`ccw` 1投（four・md とも例外なし）
+- LSD の記録が無い試合もある（four 621 試合、md 67 試合）。LSD を使う集計の母数に注意
 
-暫定的な対処:
 
 ```sql
-TRIM(REPLACE(player_name, '↻', '')) AS player_name_clean
+-- チームごとの、回転方向別の LSD 平均距離
+SELECT team, turn, AVG(distance_cm) AS avg_cm, COUNT(*) AS n
+FROM lsds
+GROUP BY team, turn
 ```
-
-修正が入ったらこの節と対処コードは不要になる。
 
 ---
 
@@ -246,3 +246,68 @@ WHERE sh.number = 0
 
 REST API では `GET /v1/md/shots?number=0` で該当の行を、
 `GET /v1/md/shots/{id}/stones` でそのストーンを取得できる。
+
+---
+
+## 10. 投球の注記（`shots.notes`）
+
+Shot by Shot のページで、投球の図の下に書かれた注記を Results Book の文字列のまま持つ。
+注記の無い投球は NULL（空文字ではない）。
+
+注記のある投球は four 9,883 投、md 2,095 投（全投球の約2%）。主な中身:
+
+| 種類 | 例（four の件数 / md の件数） |
+|---|---|
+| 進行 | `Time-out`（4,762 / 1,397）、`Measurement`（896 / 300） |
+| 違反 | `Free Guard Zone violation`（401 / 14）、`Did not pass the hog line`（319 / 27）、`Hog line violation`（253 / 45）、`No-Tick Zone violation`（223 / 0）、`Stone removal violation`（10 / 127）、`Burned stone`（149 / 32） |
+| 種別の細分 | `Slow Take-out`（1,775 / 41）、`Soft Peeling`（409 / 31）、`Split`（167 / 9）、`In-Wick`（65 / 21） |
+| 投球中の出来事 | `Picked up debris`（ゴミをかんだ。223 / 34） |
+
+大文字小文字・ハイフン・空白の表記ゆれは、生成側で今の公式の表記に揃えてある
+（例: `hogline` → `hog line`、`No tick` → `No-Tick`）。
+
+**(1) 1投に複数の注記が付くと、区切りが揃っていない。**
+`; ` のこと（`Time-out; Time-out`）、空白だけのこと（`Soft Peeling Free Guard Zone violation`）、
+`, ` のこと（`Split, Time-out`）がある。**`notes = 'Time-out'` のような完全一致では取りこぼす**ので、
+特定の注記の有無は部分一致で判定する。
+
+```sql
+-- タイムアウトを取った投球（複数の注記が付いた投球も含む）
+SELECT COUNT(*) FROM shots WHERE notes LIKE '%Time-out%'   -- four: 4,919
+```
+
+REST API では `GET /v1/{four,md}/shots?has_notes=true` で注記のある投球を、
+`?notes=Time-out` で部分一致の絞り込みができる。
+
+---
+
+## 11. 試合のステージと日時（`games` / `events`）
+
+**(1) ステージは `stage_type` で分ける。** `stage` は Results Book の表記のままで、
+同じ意味でも `Semi-final` / `SEMIFINAL` / `Semifinal` / `Semi-final 1 v 4` のように揺れる。
+予選と決勝トーナメントを分けるときは、方式によらない4分類の `stage_type` を使う。
+
+| stage_type | four | md | 中身 |
+|---|---:|---:|---|
+| `round_robin` | 4,231 | 1,281 | 総当たり（Round Robin Session N） |
+| `playoff` | 378 | 125 | 準決勝・決勝・タイブレーク・予選突破戦など |
+| `relegation` | 10 | 12 | 入れ替え戦（World Challenge・Relegation Game） |
+| `other` | 0 | 34 | md の B-side や順位決定戦（Classification など） |
+
+**(2) `group_name` があるのは、グループ分けのある大会だけ。**
+four は 2 大会（60 試合）だけ、md は 11 大会（1,163 試合）。それ以外は NULL。
+`sheet` も一部 NULL（four 187 試合、md 63 試合）。
+
+**(3) `games.start_time` は開催地の現地時刻（`HH:MM`）。** タイムゾーンの情報は無い。
+大会をまたいで時刻を比べるときは注意。
+
+**(4) `events.start_date` / `end_date` は、最初と最後の試合の日付。**
+開会式や練習日を含む公式の会期とは一致しないことがある。
+大会がどの版の競技規則で行われたかは、`start_date` と規則の版の日付で判断する（rb2db://rules の §4）。
+
+```sql
+-- 5 ロックルールの適用（2018 年 10 月）以降に始まった大会
+SELECT name, start_date FROM events WHERE start_date >= '2018-10-01'
+```
+
+日付はすべて `YYYY-MM-DD` の文字列。ISO 形式なので文字列のまま大小比較・範囲指定ができる。

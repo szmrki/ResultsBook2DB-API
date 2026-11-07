@@ -28,6 +28,8 @@ events  →  games  →  ends  →  shots  →  stones
 | id | INTEGER | 大会ID（PK） |
 | name | STRING | 大会コード（例: WMDCC2023）、UNIQUE |
 | year | INTEGER | 開催年 |
+| start_date | STRING | 開始日（`YYYY-MM-DD`）。最初の試合の日付 |
+| end_date | STRING | 終了日（`YYYY-MM-DD`）。最後の試合の日付 |
 | category | STRING | カテゴリ（MD / Men / Women / Junior Men / Junior Women） |
 | location | STRING | 開催地。例 Aberdeen, Scotland。NULL あり |
 | venue | STRING | 会場名。例 Curl Aberdeen。NULL あり |
@@ -41,10 +43,19 @@ events  →  games  →  ends  →  shots  →  stones
 | id | INTEGER | 試合ID（PK） |
 | event_id | INTEGER | 所属大会ID（FK → events.id） |
 | page | INTEGER | ソース元スコアシートのページ番号 |
+| date | STRING | 試合日（`YYYY-MM-DD`） |
+| start_time | STRING | 開始時刻（`HH:MM`、開催地の現地時刻） |
+| stage_type | STRING | ステージの分類。round_robin / playoff / relegation / other |
+| stage | STRING | ステージ名。Results Book の表記のまま（例: Round Robin Session 1、Semi-final） |
+| group_name | STRING | グループ名（例: A）。グループ分けの無い大会は NULL |
+| sheet | STRING | シート名（例: A）。NULL あり |
 | team_red | STRING | レッド側チーム名（例: JPN - Japan） |
 | team_yellow | STRING | イエロー側チーム名 |
 | final_score_red | INTEGER | レッド側最終スコア |
 | final_score_yellow | INTEGER | イエロー側最終スコア |
+
+`stage` は表記ゆれがある（`Semi-final` / `SEMIFINAL` / `Semifinal` など）。
+予選と決勝トーナメントを分けて集計するときは `stage_type` を使う。
 
 ## ends テーブル（エンド）
 
@@ -77,6 +88,10 @@ md では加えて、エンド開始時の事前配置ストーンを表す `num
 | type | STRING | ショットタイプ（下記。NULL あり） |
 | turn | STRING | ターン方向（cw=時計回り / ccw=反時計回り） |
 | percent_score | INTEGER | 成功率スコア（0/25/50/75/100 の離散値） |
+| notes | STRING | 投球の注記（例: Time-out、Measurement、Free Guard Zone violation）。注記の無い投球は NULL |
+
+`notes` が付くのは全投球の約2%（four 9,883投 / md 2,095投）。
+1投に複数の注記が付くと、区切りが `; ` のことも空白だけのこともある。
 
 **`number = 0`: 事前配置ストーン（md のみ）**
 
@@ -108,7 +123,7 @@ md ではこの「1投目より前の盤面」を、`number = 0` の行として
 | no statistics | 統計対象外 | 51 | 2 |
 | not played | 投球なし | 12 | 2 |
 
-件数は実測（four は 2026-11-02、md は 2026-10-18 時点）。
+件数は実測（four・md とも 2026-11-06 版の DB）。
 `Through` / `no statistics` は成功率が定義できず `percent_score` が NULL になる
 
 ## stones テーブル（ストーン座標）
@@ -138,8 +153,9 @@ md の `shots.number = 0` に紐づく行だけは、投球後ではなくエン
 | id | INTEGER | LSD ID（PK） |
 | game_id | INTEGER | 対応試合ID（FK → games.id） |
 | team | STRING | チーム名 |
-| player_name | STRING | 投球選手名（↻ 記号でターン方向を表す場合あり） |
+| player_name | STRING | 投球選手名 |
 | distance_cm | FLOAT | ティーからの距離（cm、範囲 0〜199.6） |
+| turn | STRING | 回転方向（cw / ccw）。各チームが1試合に cw・ccw を1投ずつ投げる |
 
 ## standings テーブル（大会順位）
 

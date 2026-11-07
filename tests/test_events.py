@@ -26,6 +26,8 @@ def create_event(
     category: str = "MD",
     location: str | None = None,
     venue: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> Event:
     """テスト用の Event レコードを DB に INSERT して返す。
 
@@ -36,11 +38,21 @@ def create_event(
         category: カテゴリ
         location: 開催地（省略可）
         venue: 会場名（省略可）
+        start_date: 開始日（"YYYY-MM-DD"、省略可）
+        end_date: 終了日（"YYYY-MM-DD"、省略可）
 
     Returns:
         Event: 作成した Event オブジェクト（id が採番済み）
     """
-    event = Event(name=name, year=year, category=category, location=location, venue=venue)
+    event = Event(
+        name=name,
+        year=year,
+        category=category,
+        location=location,
+        venue=venue,
+        start_date=start_date,
+        end_date=end_date,
+    )
     db.add(event)
     db.commit()
     # commit 後は DB に保存された最新の状態（id など）を Python オブジェクトに反映する
@@ -254,3 +266,91 @@ def test_list_events_sort_by_year_desc(client: TestClient, md_db: Session) -> No
     # 降順なので 2024 が先に来る
     assert data[0]["year"] == 2024
     assert data[1]["year"] == 2020
+
+
+# ─── 8. 開始日（start_date）での絞り込み・ソート ─────────────────────────────
+# 261106 DB で追加された events.start_date / end_date の扱いを確認する。
+# 規則の改定は秋（10月）なので、同じ年の春と秋の大会を開始日で分けられることが目的。
+
+def test_list_events_includes_start_and_end_date(client: TestClient, md_db: Session) -> None:
+    """一覧のレスポンスに start_date / end_date が含まれることを確認する。
+
+    Args:
+        client: HTTP クライアント
+        md_db: DB セッション
+    """
+    # Arrange
+    create_event(md_db, name="WMDCC2026", start_date="2026-04-25", end_date="2026-05-02")
+
+    # Act
+    response = client.get("/v1/md/events")
+
+    # Assert
+    assert response.status_code == 200
+    row = response.json()["data"][0]
+    assert row["start_date"] == "2026-04-25"
+    assert row["end_date"] == "2026-05-02"
+
+
+def test_list_events_filter_by_start_date_range(client: TestClient, md_db: Session) -> None:
+    """start_date_from / start_date_to で開始日の範囲を絞り込めることを確認する。
+
+    同じ 2018 年でも、2018-10 より前（春）と後（秋）の大会を分けられることを見る。
+    範囲の端の日付はどちらも含む。
+
+    Args:
+        client: HTTP クライアント
+        md_db: DB セッション
+    """
+    # Arrange: 2018 年の春・秋と、2019 年の春の3大会
+    create_event(md_db, name="SPRING2018", year=2018, start_date="2018-04-21")
+    create_event(md_db, name="AUTUMN2018", year=2018, start_date="2018-11-17")
+    create_event(md_db, name="SPRING2019", year=2019, start_date="2019-04-20")
+
+    # Act: 2018-10-01 以降に始まった大会
+    response_from = client.get("/v1/md/events?start_date_from=2018-10-01")
+    # Act: 2018-11-17（AUTUMN2018 の開始日ちょうど）までに始まった大会
+    response_to = client.get("/v1/md/events?start_date_to=2018-11-17")
+
+    # Assert
+    assert response_from.status_code == 200
+    names_from = {row["name"] for row in response_from.json()["data"]}
+    assert names_from == {"AUTUMN2018", "SPRING2019"}
+
+    assert response_to.status_code == 200
+    names_to = {row["name"] for row in response_to.json()["data"]}
+    # 終点の日付ちょうどに始まる AUTUMN2018 も含まれる
+    assert names_to == {"SPRING2018", "AUTUMN2018"}
+
+
+def test_list_events_filter_by_start_date_invalid(client: TestClient) -> None:
+    """日付として不正な値を start_date_from に渡すと 422 を返すことを確認する。
+
+    Args:
+        client: HTTP クライアント
+    """
+    # Act: 13月は存在しない
+    response = client.get("/v1/md/events?start_date_from=2026-13-01")
+
+    # Assert
+    assert response.status_code == 422
+
+
+def test_list_events_sort_by_start_date(client: TestClient, md_db: Session) -> None:
+    """sort=start_date で開始日順に並ぶことを確認する（id の順とは逆に入れておく）。
+
+    Args:
+        client: HTTP クライアント
+        md_db: DB セッション
+    """
+    # Arrange: id の小さい方が後に始まる大会
+    create_event(md_db, name="LATER", start_date="2026-10-28")
+    create_event(md_db, name="EARLIER", start_date="2026-04-25")
+
+    # Act
+    response = client.get("/v1/md/events?sort=start_date&order=asc")
+
+    # Assert
+    assert response.status_code == 200
+    names = [row["name"] for row in response.json()["data"]]
+    assert names == ["EARLIER", "LATER"]

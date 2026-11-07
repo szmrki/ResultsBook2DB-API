@@ -1,6 +1,7 @@
 """events ルーター。大会の一覧・単一取得・配下の試合一覧を提供する。"""
 
 from collections.abc import Callable, Generator
+from datetime import date
 from typing import Union, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -59,6 +60,8 @@ def create_router(
         year: int | None = None,
         year_from: int | None = None,
         year_to: int | None = None,
+        start_date_from: date | None = None,
+        start_date_to: date | None = None,
         category: str | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[EventResponse]:
@@ -74,6 +77,8 @@ def create_router(
             year: 開催年の完全一致で絞り込み（省略可）
             year_from: 開催年の範囲指定・始点（省略可）
             year_to: 開催年の範囲指定・終点（省略可）
+            start_date_from: 開始日の範囲指定・始点（YYYY-MM-DD、この日を含む。省略可）
+            start_date_to: 開始日の範囲指定・終点（YYYY-MM-DD、この日を含む。省略可）
             category: カテゴリの完全一致で絞り込み（省略可）
             db: DB セッション（依存性注入）
 
@@ -90,6 +95,13 @@ def create_router(
             query = query.filter(Event.year >= year_from)
         if year_to is not None:
             query = query.filter(Event.year <= year_to)
+        # start_date は "YYYY-MM-DD" の文字列で持っている。
+        # date 型で受け取ったので isoformat() も同じ形式になり、文字列のまま大小比較できる
+        # （不正な日付は FastAPI が 422 で弾く）
+        if start_date_from is not None:
+            query = query.filter(Event.start_date >= start_date_from.isoformat())
+        if start_date_to is not None:
+            query = query.filter(Event.start_date <= start_date_to.isoformat())
         if category is not None:
             query = query.filter(Event.category == category)
 

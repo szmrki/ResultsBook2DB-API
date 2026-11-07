@@ -72,18 +72,21 @@ def create_end(db: Session, game_id: int, number: int = 1) -> End:
     return end
 
 
-def create_shot(db: Session, end_id: int, number: int = 1) -> Shot:
+def create_shot(
+    db: Session, end_id: int, number: int = 1, notes: str | None = None
+) -> Shot:
     """指定エンド配下に Shot を INSERT して返す。
 
     Args:
         db: テスト用 DB セッション
         end_id: 所属エンドID
         number: ショット番号
+        notes: 投球の注記（省略可。注記の無い投球は NULL）
 
     Returns:
         Shot: 作成したショットオブジェクト
     """
-    shot = Shot(end_id=end_id, number=number, color="red")
+    shot = Shot(end_id=end_id, number=number, color="red", notes=notes)
     db.add(shot)
     db.commit()
     db.refresh(shot)
@@ -313,3 +316,72 @@ def test_list_shots_filter_percent_score_not_integer(
     response = client.get(f"/v1/four/shots?event_id={event_id}&percent_score=abc")
 
     assert response.status_code == 422
+
+
+# ─── 注記（notes）での絞り込み（261106 DB で追加） ─────────────────────────
+
+
+def _make_shots_with_notes(db: Session, notes_list: list[str | None]) -> int:
+    """1エンド配下に、指定した注記を持つショットを順に作り、event_id を返す。
+
+    Args:
+        db: テスト用 DB セッション
+        notes_list: 各ショットの notes（None は注記なし）
+
+    Returns:
+        int: 作成した大会の ID
+    """
+    event = create_event(db, name="NOTES_EV")
+    game = create_game(db, event_id=event.id)
+    end = create_end(db, game_id=game.id)
+    for i, notes in enumerate(notes_list, start=1):
+        create_shot(db, end_id=end.id, number=i, notes=notes)
+    return event.id
+
+
+def test_list_shots_filter_has_notes(client: TestClient, four_db: Session) -> None:
+    """has_notes=true / false で、注記の有無によって絞り込めることを確認する。
+
+    Args:
+        client: HTTP クライアント
+        four_db: four DB セッション
+    """
+    # Arrange: 注記ありが2投、なしが3投
+    event_id = _make_shots_with_notes(
+        four_db, ["Time-out", None, "Measurement", None, None]
+    )
+
+    # Act
+    with_notes = client.get(f"/v1/four/shots?event_id={event_id}&has_notes=true")
+    without_notes = client.get(f"/v1/four/shots?event_id={event_id}&has_notes=false")
+
+    # Assert
+    assert with_notes.status_code == 200
+    assert with_notes.json()["total"] == 2
+    assert all(row["notes"] is not None for row in with_notes.json()["data"])
+
+    assert without_notes.status_code == 200
+    assert without_notes.json()["total"] == 3
+    assert all(row["notes"] is None for row in without_notes.json()["data"])
+
+
+def test_list_shots_filter_notes_partial(client: TestClient, four_db: Session) -> None:
+    """notes は部分一致で、複数の注記が付いた投球も拾えることを確認する。
+
+    Args:
+        client: HTTP クライアント
+        four_db: four DB セッション
+    """
+    # Arrange: "Time-out" を含む投球が2つ（片方は複数の注記）、含まない投球が1つ
+    event_id = _make_shots_with_notes(
+        four_db, ["Time-out", "Measurement; Time-out", "Measurement"]
+    )
+
+    # Act
+    response = client.get(f"/v1/four/shots?event_id={event_id}&notes=time-out")
+
+    # Assert: 大文字小文字を区別せずに2投ヒット
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert {row["notes"] for row in body["data"]} == {"Time-out", "Measurement; Time-out"}

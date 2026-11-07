@@ -73,9 +73,21 @@ class StoneColor(str, Enum):
 
 
 class ShotTurn(str, Enum):
-    """投球のターン（回転）方向。"""
+    """投球のターン（回転）方向。shots / lsds の turn フィルタで共用する。"""
     cw = "cw"
     ccw = "ccw"
+
+
+class StageType(str, Enum):
+    """試合のステージの分類（games.stage_type）。
+
+    ResultsBook2DB が大会の方式によらず4つに分類した値。
+    other は md の B-side や順位決定戦など。
+    """
+    round_robin = "round_robin"
+    playoff = "playoff"
+    relegation = "relegation"
+    other = "other"
 
 
 class EventSortField(str, Enum):
@@ -83,6 +95,7 @@ class EventSortField(str, Enum):
     id = "id"
     name = "name"  # type: ignore[assignment]
     year = "year"
+    start_date = "start_date"
     category = "category"
 
 
@@ -90,6 +103,7 @@ class GameSortField(str, Enum):
     """games テーブルのソート可能カラム。"""
     id = "id"
     event_id = "event_id"
+    date = "date"
     team_red = "team_red"
     team_yellow = "team_yellow"
     final_score_red = "final_score_red"
@@ -156,6 +170,9 @@ class EventResponse(ORMBase):
     id: int
     name: str
     year: int | None
+    # 261106 DB で追加（"YYYY-MM-DD"）
+    start_date: str | None
+    end_date: str | None
     category: str | None
     # 260714 DB で追加（どちらも一部 NULL）
     location: str | None
@@ -168,6 +185,13 @@ class GameResponse(ORMBase):
     id: int
     event_id: int | None
     page: int | None
+    # 261106 DB で追加（date は "YYYY-MM-DD"、start_time は "HH:MM"）
+    date: str | None
+    start_time: str | None
+    stage_type: str | None
+    stage: str | None
+    group_name: str | None
+    sheet: str | None
     team_red: str | None
     team_yellow: str | None
     final_score_red: int | None
@@ -211,6 +235,8 @@ class ShotResponse(ORMBase):
     type: str | None
     turn: str | None
     percent_score: int | None
+    # 261106 DB で追加（注記の無い投球は NULL）
+    notes: str | None
 
 
 class StoneResponse(ORMBase):
@@ -236,6 +262,8 @@ class LsdResponse(ORMBase):
     team: str | None
     player_name: str | None
     distance_cm: float | None
+    # 261106 DB で追加（"cw" / "ccw"）
+    turn: str | None
 
 
 class StandingResponse(ORMBase):
