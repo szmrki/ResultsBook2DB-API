@@ -18,6 +18,12 @@ DB 間で列が異なるカラム（片方のみ保持、他方は NULL）:
     - stones.shot_order   … md / four とも保持（未対応の大会のみ NULL）
     - rosters.gender      … md のみ
     - rosters.position / is_skip / is_vice … four のみ
+
+261106 DB（ResultsBook2DB v1.7.0）で md / four とも次の列が増えた:
+    - events.start_date / end_date
+    - games.date / start_time / stage_type / stage / group_name / sheet
+    - shots.notes
+    - lsds.turn
 """
 
 from sqlalchemy import Column, Float, ForeignKey, Integer, String
@@ -35,6 +41,8 @@ class Event(Base):
         id: 大会ID（主キー、自動採番）
         name: 大会コード（例: WMDCC2023）、重複不可
         year: 開催年
+        start_date: 開始日（"YYYY-MM-DD"、最初の試合の日付）
+        end_date: 終了日（"YYYY-MM-DD"、最後の試合の日付）
         category: カテゴリ（MD / Men / Women / Junior Men / Junior Women）
         games: この大会に属する試合一覧（relationship）
     """
@@ -45,6 +53,10 @@ class Event(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
     year = Column(Integer)
+    # 261106 DB で追加。SQLite 側に合わせて文字列で持つ
+    # （ISO 形式なので文字列のまま大小比較・範囲指定ができる）
+    start_date = Column(String)  # 例: "2026-10-28"
+    end_date = Column(String)    # 例: "2026-11-01"
     category = Column(String)
     # 260714 DB で追加。開催地・会場名（どちらも一部 NULL）
     location = Column(String)   # 例: "Aberdeen, Scotland"
@@ -74,6 +86,12 @@ class Game(Base):
         id: 試合ID（主キー）
         event_id: 所属大会ID（events.id への外部キー）
         page: ソース元スコアシートのページ番号
+        date: 試合日（"YYYY-MM-DD"）
+        start_time: 開始時刻（"HH:MM"、開催地の現地時刻）
+        stage_type: ステージの分類（round_robin / playoff / relegation / other）
+        stage: ステージ名（Results Book の表記のまま。例: "Round Robin Session 1"）
+        group_name: グループ名（例: "A"。グループ分けの無い大会は NULL）
+        sheet: シート名（例: "A"。NULL あり）
         team_red: レッドストーン側チーム名（例: JPN - Japan）
         team_yellow: イエローストーン側チーム名
         final_score_red: レッド側最終スコア
@@ -94,6 +112,15 @@ class Game(Base):
         Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True
     )
     page = Column(Integer)
+    # 261106 DB で追加。試合の日時とステージ（Game Results の見出しから取得）
+    date = Column(String)        # 例: "2026-10-28"
+    start_time = Column(String)  # 例: "14:00"
+    # stage は表記ゆれ（"Semi-final" / "SEMIFINAL" など）があるため、
+    # 集計では方式によらない4分類の stage_type を使う
+    stage_type = Column(String)
+    stage = Column(String)
+    group_name = Column(String)  # NULL が多い（グループ分けのある大会のみ）
+    sheet = Column(String)       # NULL あり
     team_red = Column(String)
     team_yellow = Column(String)
     final_score_red = Column(Integer)
@@ -166,6 +193,8 @@ class Shot(Base):
         type: ショットタイプ（Draw / Guard / Take-out など、NULL あり）
         turn: ターン方向（"cw"=時計回り / "ccw"=反時計回り）
         percent_score: 成功率スコア（0, 25, 50, 75,100）
+        notes: 投球の注記（例: "Time-out" / "Measurement"）。Results Book の文字列のまま。
+            注記の無い投球は NULL
         end: 所属エンドオブジェクト（relationship）
         stones: この投球後のストーン座標一覧（relationship）
     """
@@ -182,6 +211,8 @@ class Shot(Base):
     type = Column(String)          # ショットタイプ（NULL あり）
     turn = Column(String)
     percent_score = Column(Integer)
+    # 261106 DB で追加。複数の注記は "; " または空白だけで区切られる（区切りが揺れる）
+    notes = Column(String)
 
     end: Mapped["End"] = relationship("End", back_populates="shots")
     stones: Mapped[list["Stone"]] = relationship(
@@ -239,8 +270,9 @@ class Lsd(Base):
         id: LSD ID（主キー）
         game_id: 対応試合ID（games.id への外部キー）
         team: チーム名
-        player_name: 投球選手名（↻記号でターン方向を示す場合あり/これは今後改善する）
+        player_name: 投球選手名
         distance_cm: ティーからの距離（cm、範囲: 0.1〜199.6）
+        turn: ターン方向（"cw" / "ccw"）。各チーム1試合につき cw・ccw を1投ずつ
         game: 対応試合オブジェクト（relationship）
     """
 
@@ -254,6 +286,9 @@ class Lsd(Base):
     team = Column(String)
     player_name = Column(String)
     distance_cm = Column(Float)
+    # 261106 DB で追加。今の書式の Results Book には回転の記号が無く、
+    # 生成側が行の順（各チーム1行目 cw・2行目 ccw）から決めている
+    turn = Column(String)
 
     game: Mapped["Game"] = relationship("Game", back_populates="lsds")
 

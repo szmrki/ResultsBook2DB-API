@@ -156,6 +156,9 @@ class EventResponse(ORMBase):
     id: int
     name: str
     year: int | None
+    # 261106 DB で追加（"YYYY-MM-DD"）
+    start_date: str | None
+    end_date: str | None
     category: str | None
     # 260714 DB で追加（どちらも一部 NULL）
     location: str | None
@@ -168,6 +171,13 @@ class GameResponse(ORMBase):
     id: int
     event_id: int | None
     page: int | None
+    # 261106 DB で追加（date は "YYYY-MM-DD"、start_time は "HH:MM"）
+    date: str | None
+    start_time: str | None
+    stage_type: str | None
+    stage: str | None
+    group_name: str | None
+    sheet: str | None
     team_red: str | None
     team_yellow: str | None
     final_score_red: int | None
@@ -211,6 +221,8 @@ class ShotResponse(ORMBase):
     type: str | None
     turn: str | None
     percent_score: int | None
+    # 261106 DB で追加（注記の無い投球は NULL）
+    notes: str | None
 
 
 class StoneResponse(ORMBase):
@@ -236,6 +248,8 @@ class LsdResponse(ORMBase):
     team: str | None
     player_name: str | None
     distance_cm: float | None
+    # 261106 DB で追加（"cw" / "ccw"）
+    turn: str | None
 
 
 class StandingResponse(ORMBase):
