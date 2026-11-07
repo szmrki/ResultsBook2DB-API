@@ -123,7 +123,7 @@ md ではこの「1投目より前の盤面」を、`number = 0` の行として
 | no statistics | 統計対象外 | 51 | 2 |
 | not played | 投球なし | 12 | 2 |
 
-件数は実測（four は 2026-11-02、md は 2026-10-18 時点）。
+件数は実測（four・md とも 2026-11-06 版の DB）。
 `Through` / `no statistics` は成功率が定義できず `percent_score` が NULL になる
 
 ## stones テーブル（ストーン座標）
