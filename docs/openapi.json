@@ -3,7 +3,7 @@
   "info": {
     "title": "ResultsBook2DB API",
     "description": "\nWCF主催のカーリング国際大会の実試合データを提供する REST API。\n\n[CURLIT](https://curlit.com/) が公開するスコアシート（Results Book）を構造化し、\n投球ごとのストーン座標・スコア・選手データを取得できます。\n\n- **four DB**: 男子・女子・ジュニアカテゴリの試合データ\n- **md DB**: ミックスダブルスカテゴリの試合データ\n\nデータを扱ううえでの前提知識（`null` の意味などの注意点・スキーマ解説）は、\nAPI 本体の `GET /v1/notes` から取得できます（研究室内限定公開）。\n\n> API 本体は研究室内限定公開です。\n",
-    "version": "1.6.0"
+    "version": "1.7.0"
   },
   "paths": {
     "/v1/four/events": {
@@ -12,7 +12,7 @@
           "four / events"
         ],
         "summary": "List Events",
-        "description": "大会一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    name: 大会名の部分一致で絞り込み（省略可）\n    year: 開催年の完全一致で絞り込み（省略可）\n    year_from: 開催年の範囲指定・始点（省略可）\n    year_to: 開催年の範囲指定・終点（省略可）\n    category: カテゴリの完全一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[EventResponse]: 総件数・ページネーション情報・大会リスト",
+        "description": "大会一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    name: 大会名の部分一致で絞り込み（省略可）\n    year: 開催年の完全一致で絞り込み（省略可）\n    year_from: 開催年の範囲指定・始点（省略可）\n    year_to: 開催年の範囲指定・終点（省略可）\n    start_date_from: 開始日の範囲指定・始点（YYYY-MM-DD、この日を含む。省略可）\n    start_date_to: 開始日の範囲指定・終点（YYYY-MM-DD、この日を含む。省略可）\n    category: カテゴリの完全一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[EventResponse]: 総件数・ページネーション情報・大会リスト",
         "operationId": "list_events_v1_four_events_get",
         "parameters": [
           {
@@ -122,6 +122,40 @@
                 }
               ],
               "title": "Year To"
+            }
+          },
+          {
+            "name": "start_date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date From"
+            }
+          },
+          {
+            "name": "start_date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date To"
             }
           },
           {
@@ -478,7 +512,7 @@
           "four / games"
         ],
         "summary": "List Games",
-        "description": "試合一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可。red / yellow どちらの側でもマッチ）\n    team_a: 対戦カード指定の一方のチーム名（省略可。team_b と両方指定したときのみ機能）\n    team_b: 対戦カード指定のもう一方のチーム名\n        （省略可。team_a と両方指定したときのみ機能）。\n        team_a と team_b を両方指定すると、両チームが対戦した試合を返す\n        （red / yellow の並び順は問わない。いずれも部分一致）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[GameResponse]: 総件数・ページネーション情報・試合リスト",
+        "description": "試合一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可。red / yellow どちらの側でもマッチ）\n    team_a: 対戦カード指定の一方のチーム名（省略可。team_b と両方指定したときのみ機能）\n    team_b: 対戦カード指定のもう一方のチーム名\n        （省略可。team_a と両方指定したときのみ機能）。\n        team_a と team_b を両方指定すると、両チームが対戦した試合を返す\n        （red / yellow の並び順は問わない。いずれも部分一致）\n    stage_type: ステージの分類で絞り込み\n        （round_robin / playoff / relegation / other、省略可）\n    stage: ステージ名の部分一致で絞り込み（省略可）。表記ゆれがあるため、\n        例えば \"semi\" で Semi-final / SEMIFINAL / Semifinal をまとめて拾える\n    group_name: グループ名の完全一致で絞り込み（例: \"A\"、省略可）\n    sheet: シート名の完全一致で絞り込み（例: \"A\"、省略可）\n    date_from: 試合日の範囲指定・始点（YYYY-MM-DD、この日を含む。省略可）\n    date_to: 試合日の範囲指定・終点（YYYY-MM-DD、この日を含む。省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[GameResponse]: 総件数・ページネーション情報・試合リスト",
         "operationId": "list_games_v1_four_games_get",
         "parameters": [
           {
@@ -588,6 +622,104 @@
                 }
               ],
               "title": "Team B"
+            }
+          },
+          {
+            "name": "stage_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StageType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage Type"
+            }
+          },
+          {
+            "name": "stage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "name": "group_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group Name"
+            }
+          },
+          {
+            "name": "sheet",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sheet"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
             }
           }
         ],
@@ -1337,6 +1469,38 @@
               ],
               "title": "Percent Score"
             }
+          },
+          {
+            "name": "has_notes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Notes"
+            }
+          },
+          {
+            "name": "notes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notes"
+            }
           }
         ],
         "responses": {
@@ -1829,6 +1993,22 @@
               ],
               "title": "Player Name"
             }
+          },
+          {
+            "name": "turn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ShotTurn"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Turn"
+            }
           }
         ],
         "responses": {
@@ -2292,7 +2472,7 @@
           "md / events"
         ],
         "summary": "List Events",
-        "description": "大会一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    name: 大会名の部分一致で絞り込み（省略可）\n    year: 開催年の完全一致で絞り込み（省略可）\n    year_from: 開催年の範囲指定・始点（省略可）\n    year_to: 開催年の範囲指定・終点（省略可）\n    category: カテゴリの完全一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[EventResponse]: 総件数・ページネーション情報・大会リスト",
+        "description": "大会一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    name: 大会名の部分一致で絞り込み（省略可）\n    year: 開催年の完全一致で絞り込み（省略可）\n    year_from: 開催年の範囲指定・始点（省略可）\n    year_to: 開催年の範囲指定・終点（省略可）\n    start_date_from: 開始日の範囲指定・始点（YYYY-MM-DD、この日を含む。省略可）\n    start_date_to: 開始日の範囲指定・終点（YYYY-MM-DD、この日を含む。省略可）\n    category: カテゴリの完全一致で絞り込み（省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[EventResponse]: 総件数・ページネーション情報・大会リスト",
         "operationId": "list_events_v1_md_events_get",
         "parameters": [
           {
@@ -2402,6 +2582,40 @@
                 }
               ],
               "title": "Year To"
+            }
+          },
+          {
+            "name": "start_date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date From"
+            }
+          },
+          {
+            "name": "start_date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date To"
             }
           },
           {
@@ -2758,7 +2972,7 @@
           "md / games"
         ],
         "summary": "List Games",
-        "description": "試合一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可。red / yellow どちらの側でもマッチ）\n    team_a: 対戦カード指定の一方のチーム名（省略可。team_b と両方指定したときのみ機能）\n    team_b: 対戦カード指定のもう一方のチーム名\n        （省略可。team_a と両方指定したときのみ機能）。\n        team_a と team_b を両方指定すると、両チームが対戦した試合を返す\n        （red / yellow の並び順は問わない。いずれも部分一致）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[GameResponse]: 総件数・ページネーション情報・試合リスト",
+        "description": "試合一覧を取得する。\n\nArgs:\n    request: slowapi がレートリミットに使用するリクエストオブジェクト（未使用）\n    limit: 取得件数の上限（1〜100000）\n    offset: 取得開始位置（0以上）\n    sort: ソート対象カラム名\n    order: ソート方向（asc / desc）\n    event_id: 大会IDで絞り込み（省略可）\n    team: チーム名の部分一致で絞り込み（省略可。red / yellow どちらの側でもマッチ）\n    team_a: 対戦カード指定の一方のチーム名（省略可。team_b と両方指定したときのみ機能）\n    team_b: 対戦カード指定のもう一方のチーム名\n        （省略可。team_a と両方指定したときのみ機能）。\n        team_a と team_b を両方指定すると、両チームが対戦した試合を返す\n        （red / yellow の並び順は問わない。いずれも部分一致）\n    stage_type: ステージの分類で絞り込み\n        （round_robin / playoff / relegation / other、省略可）\n    stage: ステージ名の部分一致で絞り込み（省略可）。表記ゆれがあるため、\n        例えば \"semi\" で Semi-final / SEMIFINAL / Semifinal をまとめて拾える\n    group_name: グループ名の完全一致で絞り込み（例: \"A\"、省略可）\n    sheet: シート名の完全一致で絞り込み（例: \"A\"、省略可）\n    date_from: 試合日の範囲指定・始点（YYYY-MM-DD、この日を含む。省略可）\n    date_to: 試合日の範囲指定・終点（YYYY-MM-DD、この日を含む。省略可）\n    db: DB セッション（依存性注入）\n\nReturns:\n    ListResponse[GameResponse]: 総件数・ページネーション情報・試合リスト",
         "operationId": "list_games_v1_md_games_get",
         "parameters": [
           {
@@ -2868,6 +3082,104 @@
                 }
               ],
               "title": "Team B"
+            }
+          },
+          {
+            "name": "stage_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StageType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage Type"
+            }
+          },
+          {
+            "name": "stage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "name": "group_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group Name"
+            }
+          },
+          {
+            "name": "sheet",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sheet"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
             }
           }
         ],
@@ -3617,6 +3929,38 @@
               ],
               "title": "Percent Score"
             }
+          },
+          {
+            "name": "has_notes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Notes"
+            }
+          },
+          {
+            "name": "notes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notes"
+            }
           }
         ],
         "responses": {
@@ -4108,6 +4452,22 @@
                 }
               ],
               "title": "Player Name"
+            }
+          },
+          {
+            "name": "turn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ShotTurn"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Turn"
             }
           }
         ],
@@ -4881,6 +5241,28 @@
             ],
             "title": "Year"
           },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
           "category": {
             "anyOf": [
               {
@@ -4920,6 +5302,8 @@
           "id",
           "name",
           "year",
+          "start_date",
+          "end_date",
           "category",
           "location",
           "venue"
@@ -4933,6 +5317,7 @@
           "id",
           "name",
           "year",
+          "start_date",
           "category"
         ],
         "title": "EventSortField",
@@ -4965,6 +5350,72 @@
               }
             ],
             "title": "Page"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "stage_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Type"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "sheet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sheet"
           },
           "team_red": {
             "anyOf": [
@@ -5016,6 +5467,12 @@
           "id",
           "event_id",
           "page",
+          "date",
+          "start_time",
+          "stage_type",
+          "stage",
+          "group_name",
+          "sheet",
           "team_red",
           "team_yellow",
           "final_score_red",
@@ -5029,6 +5486,7 @@
         "enum": [
           "id",
           "event_id",
+          "date",
           "team_red",
           "team_yellow",
           "final_score_red",
@@ -5409,6 +5867,17 @@
               }
             ],
             "title": "Distance Cm"
+          },
+          "turn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turn"
           }
         },
         "type": "object",
@@ -5417,7 +5886,8 @@
           "game_id",
           "team",
           "player_name",
-          "distance_cm"
+          "distance_cm",
+          "turn"
         ],
         "title": "LsdResponse",
         "description": "lsds テーブルのレスポンスモデル。"
@@ -5752,6 +6222,17 @@
               }
             ],
             "title": "Percent Score"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
           }
         },
         "type": "object",
@@ -5764,7 +6245,8 @@
           "player_name",
           "type",
           "turn",
-          "percent_score"
+          "percent_score",
+          "notes"
         ],
         "title": "ShotResponse",
         "description": "shots テーブルのレスポンスモデル。"
@@ -5787,7 +6269,18 @@
           "ccw"
         ],
         "title": "ShotTurn",
-        "description": "投球のターン（回転）方向。"
+        "description": "投球のターン（回転）方向。shots / lsds の turn フィルタで共用する。"
+      },
+      "StageType": {
+        "type": "string",
+        "enum": [
+          "round_robin",
+          "playoff",
+          "relegation",
+          "other"
+        ],
+        "title": "StageType",
+        "description": "試合のステージの分類（games.stage_type）。\n\nResultsBook2DB が大会の方式によらず4つに分類した値。\nother は md の B-side や順位決定戦など。"
       },
       "StandingResponse": {
         "properties": {
