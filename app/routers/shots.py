@@ -118,6 +118,8 @@ def create_router(
         color: StoneColor | None = None,
         turn: ShotTurn | None = None,
         percent_score: str | None = None,
+        has_notes: bool | None = None,
+        notes: str | None = None,
         db: Session = Depends(get_db),
     ) -> ListResponse[ShotResponse]:
         """ショット一覧を取得する。
@@ -142,6 +144,9 @@ def create_router(
                 カンマ区切りで複数指定できる（例: "75,100" で成功ショットのみ）。
                 percent_score は 0 / 25 / 50 / 75 / 100 の5段階固定値で、
                 それ以外の値を指定すると 422 を返す。
+            has_notes: 注記の有無で絞り込み（true=注記のある投球のみ / false=無い投球のみ、省略可）
+            notes: 注記の部分一致で絞り込み（例: "Time-out"、省略可）。
+                1投に複数の注記が付くことがあるため、完全一致ではなく部分一致にしている
             db: DB セッション（依存性注入）
 
         Returns:
@@ -182,6 +187,13 @@ def create_router(
             # 許可された5段階値のみを受け付けて IN フィルタで絞る。
             scores = _parse_percent_scores(percent_score)
             query = query.filter(Shot.percent_score.in_(scores))
+        # 注記の無い投球は notes が NULL なので IS NULL で判定する
+        if has_notes is True:
+            query = query.filter(Shot.notes.is_not(None))
+        elif has_notes is False:
+            query = query.filter(Shot.notes.is_(None))
+        if notes is not None:
+            query = query.filter(Shot.notes.ilike(f"%{notes}%"))
 
         order_func = asc if order == OrderDirection.asc else desc
         query = query.order_by(order_func(getattr(Shot, sort.value)))

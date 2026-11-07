@@ -73,9 +73,21 @@ class StoneColor(str, Enum):
 
 
 class ShotTurn(str, Enum):
-    """投球のターン（回転）方向。"""
+    """投球のターン（回転）方向。shots / lsds の turn フィルタで共用する。"""
     cw = "cw"
     ccw = "ccw"
+
+
+class StageType(str, Enum):
+    """試合のステージの分類（games.stage_type）。
+
+    ResultsBook2DB が大会の方式によらず4つに分類した値。
+    other は md の B-side や順位決定戦など。
+    """
+    round_robin = "round_robin"
+    playoff = "playoff"
+    relegation = "relegation"
+    other = "other"
 
 
 class EventSortField(str, Enum):
@@ -83,6 +95,7 @@ class EventSortField(str, Enum):
     id = "id"
     name = "name"  # type: ignore[assignment]
     year = "year"
+    start_date = "start_date"
     category = "category"
 
 
@@ -90,6 +103,7 @@ class GameSortField(str, Enum):
     """games テーブルのソート可能カラム。"""
     id = "id"
     event_id = "event_id"
+    date = "date"
     team_red = "team_red"
     team_yellow = "team_yellow"
     final_score_red = "final_score_red"
