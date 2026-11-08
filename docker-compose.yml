@@ -43,6 +43,9 @@ services:
       # コンテナ内では 0.0.0.0 で待ち受け、ホスト側公開を 127.0.0.1 に限定する。
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8100
+      # 大量データ取得の誘導先として AI に案内する REST API の URL。
+      # 本番の URL は .env（Git 管理外）にだけ書く。未設定なら AI は URL をユーザーに確認する。
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
     depends_on:
       db:
         condition: service_healthy

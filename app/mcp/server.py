@@ -25,13 +25,14 @@ from mcp.server.fastmcp import FastMCP
 
 from app.logging import setup_logging
 from app.mcp import knowledge
-from app.mcp.config import MAX_ROWS, MCP_HOST, MCP_PORT
+from app.mcp.config import MAX_ROWS, MCP_HOST, MCP_PORT, PUBLIC_API_URL, api_url_label
 from app.mcp.query import run_query as _run_query
 from app.mcp.sql_guard import SQLValidationError
+from app.pagination import MAX_LIMIT
 
 # サーバーの説明文（instructions）。接続した AI がこのサーバーの使い方・前提を
 # 把握できるよう、要点と「まず読むべきリソース」を明記する。
-INSTRUCTIONS = """\
+_INSTRUCTIONS_TEMPLATE = """\
 カーリング国際公式大会の実試合データベース（rb2db）に read-only SQL で問い合わせるサーバー。
 
 DB は2系統:
@@ -49,7 +50,53 @@ DB は2系統:
 制約:
 - read-only のみ（SELECT / WITH で始まる単一文）。
 - 返却は最大 {max_rows:,} 行。超えると truncated=true になる。
-""".format(max_rows=MAX_ROWS)
+- run_query の結果はそのまま AI のコンテキストに入るため、実用上は数百行程度が目安。
+
+大量の生データが必要なとき（可視化・学習データ作成・全投球の座標など）:
+- run_query で取ろうとせず、まず SQL 側の集計（GROUP BY・ビン分け）で足りないか考える。
+- それでも生データが要るなら、REST API（{api_url}）を呼ぶ Python スクリプトを書いて
+  実行し、結果を JSON / CSV ファイルに保存してから分析する。データをコンテキストに流さない。
+- 認証は全リクエストにヘッダー CF-Access-Client-Id / CF-Access-Client-Secret を付け、値は
+  環境変数 CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET から読む。トークンをコードに
+  直書きしたり、値を表示したりしない。未設定ならユーザーに設定を依頼する。
+- エンドポイントとパラメータは {api_url}/openapi.json で確認する（同じ認証ヘッダーが必要）。
+- 一覧は {{total, limit, offset, data}} の形で返る。limit は最大 {max_limit:,}。全件取るときは
+  sort=id&order=asc を付け、offset を limit ずつ進めて total に達したら止める。
+  レート制限で 429 が返ったら待って再試行する。
+- API に JOIN はない。各リソースは親の ID だけを持つ（例: stones は shot_id のみ）ので、
+  必要なリソースを個別に取得して親の ID で結合する。
+- rb2db://sql-notes の注意点（ends の NULL など）は API で取ったデータにも当てはまる。
+{url_note}"""
+
+
+def build_instructions(api_url: str) -> str:
+    """サーバーの instructions を組み立てる。
+
+    URL を引数で受け取るのは、URL あり / なしの両方の文面をテストで確かめるため。
+
+    Args:
+        api_url: 大量データ取得の誘導先として案内する REST API の URL（未設定なら空文字）。
+
+    Returns:
+        instructions の文面。URL が空なら、URL をユーザーに確認するよう促す一行が加わる。
+    """
+    # URL が未設定なら、本文中の URL は目印（<API_URL>）になる。その意味を AI に伝える。
+    url_note = (
+        ""
+        if api_url
+        else f"- {api_url_label(api_url)} はこのサーバーに設定されていない。"
+        "API の URL はユーザーに確認する。\n"
+    )
+    return _INSTRUCTIONS_TEMPLATE.format(
+        max_rows=MAX_ROWS,
+        api_url=api_url_label(api_url),
+        max_limit=MAX_LIMIT,
+        url_note=url_note,
+    )
+
+
+# 実際に使う instructions（サーバー起動時の設定値で一度だけ組み立てる）。
+INSTRUCTIONS = build_instructions(PUBLIC_API_URL)
 
 # ログを初期化してからサーバーを構築する（run_query 実行時のクエリログ用）。
 setup_logging()
@@ -85,6 +132,7 @@ def run_query(sql: str, db: Literal["md", "four"]) -> dict[str, Any]:
           - rows: 各行を値の配列で表したリスト
           - row_count: 返した行数
           - truncated: 行数上限（最大行）を超えて切り落とした場合 True
+          - hint: truncated=True のときだけ付く。次に取るべき行動の案内
     """
     try:
         return _run_query(sql, db)
@@ -136,6 +184,7 @@ def resource_metrics() -> str:
 def resource_rules() -> str:
     """競技規則の変遷（時期をまたいで比較するときに気をつける規則変更）。"""
     return knowledge.load("rules.md")
+
 
 
 def main() -> None:

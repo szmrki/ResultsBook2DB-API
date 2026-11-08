@@ -7,6 +7,7 @@ MCP ツール定義（server.py）から分離し、単体でテストできる�
   2. read-only エンジンでクエリ実行（DB 側で read-only + timeout 強制）
   3. 行数上限 + 1 件取得し、超過なら末尾を切り落として truncated=true
   4. columns + rows(値の配列) + メタ情報の dict に整形
+     （切り落とした場合は、次に取るべき行動を示す hint を添える）
   5. 実行内容を構造化ログに記録
 """
 
@@ -17,11 +18,42 @@ from typing import Any
 from sqlalchemy import text
 
 from app.logging import get_logger
-from app.mcp.config import MAX_ROWS
+from app.mcp.config import MAX_ROWS, PUBLIC_API_URL, api_url_label
 from app.mcp.database import get_engine
 from app.mcp.sql_guard import validate_readonly_query
 
 logger = get_logger("app.mcp.query")
+
+
+def build_truncation_hint(api_url: str) -> str:
+    """truncated=true のときに結果へ添えるヒントの文面を作る。
+
+    instructions は AI に読み飛ばされることがあるが、この応答は AI が上限にぶつかった
+    その瞬間に必ず目にする。だからここで「次に何をすべきか」を示すのが一番効く。
+    URL を引数で受け取るのは、URL あり / なしの両方の文面をテストで確かめるため。
+
+    Args:
+        api_url: 案内する REST API の URL（未設定なら空文字）。
+
+    Returns:
+        ヒントの文面。URL が空なら、URL をユーザーに確認するよう促す一文が加わる。
+    """
+    hint = (
+        f"結果が上限 {MAX_ROWS:,} 行を超えたため切り落とされています。"
+        "生データそのものが大量に必要な場合は run_query を使わず、"
+        f"REST API（{api_url_label(api_url)}）をスクリプトから呼んで"
+        "結果をファイルに保存してください。"
+        "認証は環境変数 CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET から読む。"
+        "手順はサーバーの instructions の「大量の生データが必要なとき」に従うこと。"
+    )
+    if not api_url:
+        # URL がサーバーに設定されていない場合は、推測させずにユーザーへ聞かせる。
+        hint += "API の URL はこのサーバーに設定されていないので、ユーザーに確認すること。"
+    return hint
+
+
+# 実際に使うヒント（サーバー起動時の設定値で一度だけ組み立てる）。
+TRUNCATION_HINT = build_truncation_hint(PUBLIC_API_URL)
 
 
 def _to_jsonable(value: Any) -> Any:
@@ -60,6 +92,8 @@ def run_query(sql: str, db: str) -> dict[str, Any]:
           - rows: 各行を値の配列で表したリスト
           - row_count: 返した行数（rows の長さ）
           - truncated: 行数上限を超えて切り落とした場合 True
+          - hint: truncated=True のときだけ付く。集計に切り替えるか、
+            REST API で取得するよう促す案内文
 
     Raises:
         SQLValidationError: SQL が read-only の探索クエリとして不正な場合。
@@ -101,7 +135,7 @@ def run_query(sql: str, db: str) -> dict[str, Any]:
         },
     )
 
-    return {
+    response: dict[str, Any] = {
         "sql": normalized_sql,
         "db": db,
         "columns": columns,
@@ -109,3 +143,7 @@ def run_query(sql: str, db: str) -> dict[str, Any]:
         "row_count": len(rows),
         "truncated": truncated,
     }
+    # 切り落としたときだけ hint を付ける（通常の応答は従来どおりの形のまま）。
+    if truncated:
+        response["hint"] = TRUNCATION_HINT
+    return response

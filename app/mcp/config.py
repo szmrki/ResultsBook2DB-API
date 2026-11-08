@@ -20,6 +20,31 @@ DATABASE_URL_FOUR_RO = os.environ["DATABASE_URL_FOUR_RO"]
 # 結果JSONの truncated=true でAIに「絞られた」ことを伝える。
 MAX_ROWS = 10_000
 
+# ── 大量データ取得の誘導先（REST API）────────────────────────────
+# run_query は結果が AI のコンテキストを経由するため、大量の生データ取得には向かない。
+# その場合は「スクリプトから REST API を呼んでファイルに保存する」よう AI を誘導する。
+# instructions と truncated 時のヒントに、この URL を差し込んで案内する。
+#
+# 本番の URL はコードに書かず、サーバーの .env（Git 管理外）だけに置く。
+# リポジトリが public なので、既定値として書くと本番のホスト名が公開されてしまうため。
+# 未設定（空文字）のときは、AI に「URL はユーザーに確認する」よう案内する。
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "").rstrip("/")
+
+# URL が未設定のときに、案内文の中で URL の代わりに置く目印。
+API_URL_PLACEHOLDER = "<API_URL>"
+
+
+def api_url_label(api_url: str) -> str:
+    """案内文に差し込む API の URL を返す。未設定なら目印の文字列を返す。
+
+    Args:
+        api_url: 設定された API の URL（未設定なら空文字）。
+
+    Returns:
+        api_url が空でなければそのまま、空なら API_URL_PLACEHOLDER。
+    """
+    return api_url or API_URL_PLACEHOLDER
+
 # クエリのタイムアウト（ミリ秒）。PostgreSQL の statement_timeout に渡す。
 # 長時間クエリを DB 側で打ち切る主たる防御線の一つ。
 STATEMENT_TIMEOUT_MS = 30_000
