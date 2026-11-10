@@ -129,6 +129,30 @@ def test_rules_contains_major_boundaries(client: TestClient) -> None:
     assert "ノーティック" in text
 
 
+def test_schema_defines_all_shot_types(client: TestClient) -> None:
+    """schema にショットタイプ全14値の定義が載り続けていることを確認する。
+
+    shots.type は結果ではなく「狙い」の記録で、Front と Guard のように
+    名前だけでは取り違える値がある。定義が1つでも抜けると、そのタイプを使う
+    分析だけ前提なしで進んでしまう。DB に新しい値が増えたら、この一覧と
+    schema.md の定義表の両方を更新する。
+
+    Args:
+        client: テスト用 HTTP クライアント
+    """
+    # Act
+    text = client.get("/v1/notes/schema").text
+
+    # Assert: 全14値がバッククォート付き（定義表の書式）で現れること
+    all_types = [
+        "Draw", "Take-out", "Front", "Hit and Roll", "Double Take-out", "Clearing",
+        "Guard", "Raise", "Promotion Take-out", "Wick / Soft Peeling", "Freeze",
+        "Through", "no statistics", "not played",
+    ]
+    for t in all_types:
+        assert f"`{t}`" in text, f"schema にショットタイプ '{t}' の定義がない"
+
+
 def test_openapi_description_points_to_notes() -> None:
     """OpenAPI の説明文が /v1/notes への導線を含むことを確認する。
 
